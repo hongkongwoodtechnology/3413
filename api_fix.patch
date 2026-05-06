@@ -1,0 +1,29 @@
+diff --git a/src/lib/api/client.ts b/src/lib/api/client.ts
+index e3e8b0a..a1b2c3d 100644
+--- a/src/lib/api/client.ts
++++ b/src/lib/api/client.ts
+@@ -4,5 +4,5 @@
+  */
+ 
+-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
++const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+ const DEFAULT_TIMEOUT = 8000;
+ 
+diff --git a/src/app/api/admin/dashboard/route.ts b/src/app/api/admin/dashboard/route.ts
+index a1b2c3d..b2c3d4e 100644
+--- a/src/app/api/admin/dashboard/route.ts
++++ b/src/app/api/admin/dashboard/route.ts
+@@ -1,9 +1,9 @@
+-import { NextResponse } from 'next/server';
++import { NextRequest, NextResponse } from 'next/server';
+ import { GET as getMatches } from '../../matches/route';
+ 
+-export async function GET(request: Request) {
++export async function GET(request: NextRequest) {
+     try {
+-        // 直接呼叫同專案的 Route Handler 函數，避免自己打自己的 API 造成 Deadlock 或連線問題
+-        const fakeRequest = new Request(new URL('/api/matches?lang=zh-TW', request.url).toString());
++        // 直接呼叫同專案的 Route Handler 函數，並建立 NextRequest 供其讀取 nextUrl
++        const fakeRequest = new NextRequest(new URL('/api/matches?lang=zh-TW', request.url).toString());
+         const matchesResponse = await getMatches(fakeRequest);
+         const matchesData = await matchesResponse.json();

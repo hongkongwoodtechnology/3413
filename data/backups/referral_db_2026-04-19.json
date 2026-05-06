@@ -1,0 +1,58 @@
+{
+  "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg": {
+    "stats": {
+      "total": "0 USDT",
+      "withdrawable": "0 USDT",
+      "month": "0 USDT",
+      "friends": 0
+    },
+    "commissions": [],
+    "referees": [],
+    "balances": {
+      "usdt": 0,
+      "bonus": 0
+    }
+  },
+  "FhehP5xXeHrMSFZkti2vAXDm4ZJeqXNu3vARGCTV8pkf": {
+    "stats": {
+      "total": "0 USDT",
+      "withdrawable": "0 USDT",
+      "month": "0 USDT",
+      "friends": 0
+    },
+    "commissions": [],
+    "referees": [],
+    "balances": {
+      "usdt": 0,
+      "bonus": 1000
+    }
+  },
+  "2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K": {
+    "stats": {
+      "total": "0 USDT",
+      "withdrawable": "0 USDT",
+      "month": "0 USDT",
+      "friends": 0
+    },
+    "commissions": [],
+    "referees": [],
+    "balances": {
+      "usdt": 0,
+      "bonus": 0
+    }
+  },
+  "9FfHYyK8ZKsA82BPtierU4sWmwTS8QTGqrGqtTt6tEu7": {
+    "stats": {
+      "total": "0 USDT",
+      "withdrawable": "0 USDT",
+      "month": "0 USDT",
+      "friends": 0
+    },
+    "commissions": [],
+    "referees": [],
+    "balances": {
+      "usdt": 0,
+      "bonus": 0
+    }
+  }
+}

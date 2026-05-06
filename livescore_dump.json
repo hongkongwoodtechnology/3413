@@ -1,0 +1,1638 @@
+[
+  {
+    "country": "Champions League",
+    "league": "Knockout Stage"
+  },
+  {
+    "country": "England",
+    "league": "Championship"
+  },
+  {
+    "country": "England",
+    "league": "League 1"
+  },
+  {
+    "country": "England",
+    "league": "League 2"
+  },
+  {
+    "country": "Scotland",
+    "league": "Championship"
+  },
+  {
+    "country": "Argentina",
+    "league": "Primera Division: Apertura"
+  },
+  {
+    "country": "Argentina",
+    "league": "Copa Argentina"
+  },
+  {
+    "country": "Mexico",
+    "league": "Liga de Expansion MX: Clausura"
+  },
+  {
+    "country": "Egypt",
+    "league": "Premier League: Championship Group"
+  },
+  {
+    "country": "Denmark",
+    "league": "Superliga: Championship Group"
+  },
+  {
+    "country": "Norway",
+    "league": "Eliteserien"
+  },
+  {
+    "country": "Australia",
+    "league": "A-League"
+  },
+  {
+    "country": "Copa Libertadores",
+    "league": "Group C"
+  },
+  {
+    "country": "Copa Sudamericana",
+    "league": "Group E"
+  },
+  {
+    "country": "Copa Sudamericana",
+    "league": "Group G"
+  },
+  {
+    "country": "Croatia",
+    "league": "HNL"
+  },
+  {
+    "country": "Poland",
+    "league": "Ekstraklasa"
+  },
+  {
+    "country": "South Africa",
+    "league": "Premier League"
+  },
+  {
+    "country": "International Friendlies",
+    "league": "Women's Friendlies"
+  },
+  {
+    "country": "Women's Euro U17",
+    "league": "Qualification Round 2: Group B4"
+  },
+  {
+    "country": "Australia",
+    "league": "Queensland"
+  },
+  {
+    "country": "Azerbaijan",
+    "league": "Premier League"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie B"
+  },
+  {
+    "country": "Brazil",
+    "league": "Copa do Nordeste: Group Stage"
+  },
+  {
+    "country": "Chile",
+    "league": "Primera División"
+  },
+  {
+    "country": "Colombia",
+    "league": "Primera A: Apertura"
+  },
+  {
+    "country": "Colombia",
+    "league": "Primera B: Apertura"
+  },
+  {
+    "country": "Costa Rica",
+    "league": "Primera División: Clausura"
+  },
+  {
+    "country": "Costa Rica",
+    "league": "Liga de Ascenso: Clausura: Group A"
+  },
+  {
+    "country": "Costa Rica",
+    "league": "Liga de Ascenso: Clausura: Group B"
+  },
+  {
+    "country": "Croatia",
+    "league": "Prva NL"
+  },
+  {
+    "country": "Denmark",
+    "league": "Ligaen U19"
+  },
+  {
+    "country": "Denmark",
+    "league": "Ligaen U17"
+  },
+  {
+    "country": "Ecuador",
+    "league": "Serie A"
+  },
+  {
+    "country": "England",
+    "league": "Premier League U18"
+  },
+  {
+    "country": "Estonia",
+    "league": "Meistriliiga"
+  },
+  {
+    "country": "Georgia",
+    "league": "Erovnuli Liga"
+  },
+  {
+    "country": "Georgia",
+    "league": "Erovnuli Liga 2"
+  },
+  {
+    "country": "Germany",
+    "league": "3. Liga"
+  },
+  {
+    "country": "Germany",
+    "league": "Regionalliga Nordost"
+  },
+  {
+    "country": "Germany",
+    "league": "Oberliga: Bayern South"
+  },
+  {
+    "country": "Ghana",
+    "league": "Premier League"
+  },
+  {
+    "country": "Guatemala",
+    "league": "Liga Nacional: Clausura"
+  },
+  {
+    "country": "Honduras",
+    "league": "Liga Nacional: Clausura"
+  },
+  {
+    "country": "India",
+    "league": "Super League"
+  },
+  {
+    "country": "India",
+    "league": "I-League"
+  },
+  {
+    "country": "Israel",
+    "league": "Liga Leumit"
+  },
+  {
+    "country": "Jordan",
+    "league": "Pro League"
+  },
+  {
+    "country": "Latvia",
+    "league": "Virsliga"
+  },
+  {
+    "country": "Niger",
+    "league": "Super Ligue"
+  },
+  {
+    "country": "Northern Ireland",
+    "league": "Premiership: Championship Group"
+  },
+  {
+    "country": "Northern Ireland",
+    "league": "Premiership: Relegation Group"
+  },
+  {
+    "country": "North Macedonia",
+    "league": "1st League"
+  },
+  {
+    "country": "Norway",
+    "league": "1. Division"
+  },
+  {
+    "country": "Norway",
+    "league": "3. Division: Group 2"
+  },
+  {
+    "country": "Norway",
+    "league": "3. Division: Group 3"
+  },
+  {
+    "country": "Norway",
+    "league": "3. Division: Group 4"
+  },
+  {
+    "country": "Norway",
+    "league": "3. Division: Group 6"
+  },
+  {
+    "country": "Poland",
+    "league": "I Liga"
+  },
+  {
+    "country": "Portugal",
+    "league": "Liga Portugal 2"
+  },
+  {
+    "country": "San Marino",
+    "league": "Campionato Sammarinese"
+  },
+  {
+    "country": "Scotland",
+    "league": "League 1"
+  },
+  {
+    "country": "Slovakia",
+    "league": "2. Liga"
+  },
+  {
+    "country": "South Africa",
+    "league": "1st Division"
+  },
+  {
+    "country": "Sweden",
+    "league": "Superettan"
+  },
+  {
+    "country": "Switzerland",
+    "league": "Challenge League"
+  },
+  {
+    "country": "Turkiye",
+    "league": "1st Lig"
+  },
+  {
+    "country": "Uzbekistan",
+    "league": "Super League"
+  },
+  {
+    "country": "Denmark",
+    "league": "Future Cup"
+  },
+  {
+    "country": "Argentina",
+    "league": "Primera C"
+  },
+  {
+    "country": "Europa League",
+    "league": "Knockout Stage"
+  },
+  {
+    "country": "CONCACAF",
+    "league": "CONCACAF Champions Cup"
+  },
+  {
+    "country": "Turkiye",
+    "league": "Süper Lig"
+  },
+  {
+    "country": "Saudi Arabia",
+    "league": "Saudi Professional League"
+  },
+  {
+    "country": "Mexico",
+    "league": "Liga MX: Clausura"
+  },
+  {
+    "country": "Egypt",
+    "league": "Premier League: Relegation Group"
+  },
+  {
+    "country": "Greece",
+    "league": "Super League: Relegation"
+  },
+  {
+    "country": "Copa Libertadores",
+    "league": "Group B"
+  },
+  {
+    "country": "Copa Libertadores",
+    "league": "Group D"
+  },
+  {
+    "country": "Copa Libertadores",
+    "league": "Group G"
+  },
+  {
+    "country": "Copa Sudamericana",
+    "league": "Group A"
+  },
+  {
+    "country": "Copa Sudamericana",
+    "league": "Group C"
+  },
+  {
+    "country": "Copa Sudamericana",
+    "league": "Group D"
+  },
+  {
+    "country": "Copa Sudamericana",
+    "league": "Group F"
+  },
+  {
+    "country": "Bulgaria",
+    "league": "Parva Liga"
+  },
+  {
+    "country": "Women's Euro U17",
+    "league": "Qualification Round 2: Group B5"
+  },
+  {
+    "country": "Argentina",
+    "league": "Primera Nacional"
+  },
+  {
+    "country": "Australia",
+    "league": "NPL Western Australia"
+  },
+  {
+    "country": "Australia",
+    "league": "New South Wales League One"
+  },
+  {
+    "country": "Bosnia and Herzegovina",
+    "league": "1st League: RS"
+  },
+  {
+    "country": "Bosnia and Herzegovina",
+    "league": "1st League: FBiH"
+  },
+  {
+    "country": "Cameroon",
+    "league": "Elite 1"
+  },
+  {
+    "country": "Croatia",
+    "league": "Cup"
+  },
+  {
+    "country": "Cyprus",
+    "league": "Cypriot Cup"
+  },
+  {
+    "country": "Ecuador",
+    "league": "Serie B"
+  },
+  {
+    "country": "England",
+    "league": "National League: North"
+  },
+  {
+    "country": "France",
+    "league": "Championnat National 2: Group A"
+  },
+  {
+    "country": "Germany",
+    "league": "Regionalliga West"
+  },
+  {
+    "country": "Germany",
+    "league": "Oberliga: Baden-Wurttemberg"
+  },
+  {
+    "country": "Germany",
+    "league": "Oberliga: Flens"
+  },
+  {
+    "country": "Germany",
+    "league": "Oberliga NOFV Nord 25/26"
+  },
+  {
+    "country": "Germany",
+    "league": "Oberliga: NOFV-Sud"
+  },
+  {
+    "country": "Greece",
+    "league": "Super League 2: North: Relegation Group"
+  },
+  {
+    "country": "Iraq",
+    "league": "Iraq Stars League"
+  },
+  {
+    "country": "Italy",
+    "league": "Serie C: Group A"
+  },
+  {
+    "country": "Italy",
+    "league": "Serie C: Group B"
+  },
+  {
+    "country": "Italy",
+    "league": "Serie C: Group C"
+  },
+  {
+    "country": "Italy",
+    "league": "Serie D: Group B"
+  },
+  {
+    "country": "Italy",
+    "league": "Serie D: Group D"
+  },
+  {
+    "country": "Italy",
+    "league": "Serie D: Group F"
+  },
+  {
+    "country": "Italy",
+    "league": "Serie D: Group I"
+  },
+  {
+    "country": "Libya",
+    "league": "Premier League: Group A"
+  },
+  {
+    "country": "Libya",
+    "league": "Premier League: Group B"
+  },
+  {
+    "country": "Libya",
+    "league": "Premier League: Group C"
+  },
+  {
+    "country": "Libya",
+    "league": "Premier League: Group D"
+  },
+  {
+    "country": "Montenegro",
+    "league": "1. CFL"
+  },
+  {
+    "country": "Norway",
+    "league": "3. Division: Group 5"
+  },
+  {
+    "country": "Norway",
+    "league": "Women's Cup"
+  },
+  {
+    "country": "Philippines",
+    "league": "PFL"
+  },
+  {
+    "country": "Poland",
+    "league": "Cup"
+  },
+  {
+    "country": "Portugal",
+    "league": "Campeonato de Portugal: Group A"
+  },
+  {
+    "country": "Qatar",
+    "league": "Qatar Stars League"
+  },
+  {
+    "country": "Serbia",
+    "league": "Super Liga"
+  },
+  {
+    "country": "Slovenia",
+    "league": "2. SNL"
+  },
+  {
+    "country": "Spain",
+    "league": "Primera Division RFEF: Group 1"
+  },
+  {
+    "country": "Switzerland",
+    "league": "Promotion League"
+  },
+  {
+    "country": "Tanzania",
+    "league": "Premier League"
+  },
+  {
+    "country": "Turkiye",
+    "league": "2nd Lig: White Group"
+  },
+  {
+    "country": "Ukraine",
+    "league": "Persha Liga"
+  },
+  {
+    "country": "USA",
+    "league": "USL League One"
+  },
+  {
+    "country": "Japan",
+    "league": "J2 League : East A"
+  },
+  {
+    "country": "International",
+    "league": "AFC Champions League Two: Quarter-Finals"
+  },
+  {
+    "country": "Brazil",
+    "league": "Paulista A2: Second Stage"
+  },
+  {
+    "country": "Conference League",
+    "league": "Knockout Round Play-offs"
+  },
+  {
+    "country": "Copa Libertadores",
+    "league": "Group A"
+  },
+  {
+    "country": "Copa Libertadores",
+    "league": "Group F"
+  },
+  {
+    "country": "Copa Libertadores",
+    "league": "Group H"
+  },
+  {
+    "country": "Copa Sudamericana",
+    "league": "Group B"
+  },
+  {
+    "country": "Copa Sudamericana",
+    "league": "Group H"
+  },
+  {
+    "country": "Algeria",
+    "league": "Ligue 1"
+  },
+  {
+    "country": "International",
+    "league": "AFC Challenge League: Knockout Stage"
+  },
+  {
+    "country": "Belarus",
+    "league": "Premier League"
+  },
+  {
+    "country": "Benin",
+    "league": "Ligue 1"
+  },
+  {
+    "country": "Bulgaria",
+    "league": "Vtora Liga"
+  },
+  {
+    "country": "Egypt",
+    "league": "2. Division A"
+  },
+  {
+    "country": "Estonia",
+    "league": "Esiliiga"
+  },
+  {
+    "country": "United Arab Emirates",
+    "league": "Pro League"
+  },
+  {
+    "country": "USA",
+    "league": "USL Championship"
+  },
+  {
+    "country": "Women's Euro U19",
+    "league": "Qualification Round 2: Group A1"
+  },
+  {
+    "country": "International",
+    "league": "Qualification Rd. 2: Group A3"
+  },
+  {
+    "country": "International",
+    "league": "Qualification Rd. 2: Group B3"
+  },
+  {
+    "country": "International",
+    "league": "Qualification Rd. 2: Group B5"
+  },
+  {
+    "country": "England",
+    "league": "Premier League"
+  },
+  {
+    "country": "Spain",
+    "league": "LaLiga"
+  },
+  {
+    "country": "Germany",
+    "league": "Bundesliga"
+  },
+  {
+    "country": "Italy",
+    "league": "Serie A"
+  },
+  {
+    "country": "France",
+    "league": "Ligue 1"
+  },
+  {
+    "country": "Netherlands",
+    "league": "Eredivisie"
+  },
+  {
+    "country": "Portugal",
+    "league": "Primeira Liga"
+  },
+  {
+    "country": "Spain",
+    "league": "LaLiga 2"
+  },
+  {
+    "country": "Italy",
+    "league": "Serie B"
+  },
+  {
+    "country": "Germany",
+    "league": "2. Bundesliga"
+  },
+  {
+    "country": "France",
+    "league": "Ligue 2"
+  },
+  {
+    "country": "Netherlands",
+    "league": "Eerste Divisie"
+  },
+  {
+    "country": "Austria",
+    "league": "Bundesliga: Championship"
+  },
+  {
+    "country": "China",
+    "league": "Super League"
+  },
+  {
+    "country": "Copa Libertadores",
+    "league": "Group E"
+  },
+  {
+    "country": "Finland",
+    "league": "Veikkausliiga"
+  },
+  {
+    "country": "Romania",
+    "league": "Liga 1: Relegation Group"
+  },
+  {
+    "country": "Ireland",
+    "league": "League of Ireland Premier Division"
+  },
+  {
+    "country": "Euro U17",
+    "league": "Euro U17 Qualification: League B: Group B3"
+  },
+  {
+    "country": "International",
+    "league": "CAF Confederation Cup: Final Stage"
+  },
+  {
+    "country": "Armenia",
+    "league": "Premier League"
+  },
+  {
+    "country": "Australia",
+    "league": "NPL South Australia"
+  },
+  {
+    "country": "Australia",
+    "league": "NPL Tasmania"
+  },
+  {
+    "country": "Australia",
+    "league": "NPL Victoria"
+  },
+  {
+    "country": "Australia",
+    "league": "NorZone Premier League"
+  },
+  {
+    "country": "Australia",
+    "league": "Queensland Premier League"
+  },
+  {
+    "country": "Australia",
+    "league": "South Australia State League 1"
+  },
+  {
+    "country": "Australia",
+    "league": "Victoria Premier League One"
+  },
+  {
+    "country": "Austria",
+    "league": "2. Liga"
+  },
+  {
+    "country": "Belgium",
+    "league": "Challenger Pro League"
+  },
+  {
+    "country": "Belgium",
+    "league": "Belgian Pro League Playoff: Conference League Group"
+  },
+  {
+    "country": "Burkina Faso",
+    "league": "Ligue 1"
+  },
+  {
+    "country": "Czech Republic",
+    "league": "2nd league"
+  },
+  {
+    "country": "Denmark",
+    "league": "1st Division: Promotion"
+  },
+  {
+    "country": "Denmark",
+    "league": "1st Division: Relegation"
+  },
+  {
+    "country": "Denmark",
+    "league": "Danmarksserien: Promotion Play-off: Group 1"
+  },
+  {
+    "country": "Denmark",
+    "league": "Danmarksserien: Relegation Play-off: Group 1"
+  },
+  {
+    "country": "England",
+    "league": "Premier League 2"
+  },
+  {
+    "country": "Finland",
+    "league": "Ykkosliiga"
+  },
+  {
+    "country": "Finland",
+    "league": "Ykkonen"
+  },
+  {
+    "country": "France",
+    "league": "Championnat National"
+  },
+  {
+    "country": "France",
+    "league": "Championnat National 2: Group B"
+  },
+  {
+    "country": "France",
+    "league": "Championnat National 2: Group C"
+  },
+  {
+    "country": "Germany",
+    "league": "Regionalliga Bayern"
+  },
+  {
+    "country": "Germany",
+    "league": "Regionalliga Nord"
+  },
+  {
+    "country": "Germany",
+    "league": "Regionalliga Südwest"
+  },
+  {
+    "country": "Germany",
+    "league": "Oberliga: Bayern North"
+  },
+  {
+    "country": "Germany",
+    "league": "Oberliga: Bremen"
+  },
+  {
+    "country": "Germany",
+    "league": "Oberliga: Hamburg"
+  },
+  {
+    "country": "Germany",
+    "league": "Oberliga: Hessen"
+  },
+  {
+    "country": "Germany",
+    "league": "Oberliga: Mittelrhein"
+  },
+  {
+    "country": "Germany",
+    "league": "Oberliga: Niederrhein"
+  },
+  {
+    "country": "Germany",
+    "league": "Oberliga: Niedersachsen"
+  },
+  {
+    "country": "Germany",
+    "league": "Oberliga: Rheinland-Pfalz/Saar"
+  },
+  {
+    "country": "Germany",
+    "league": "Oberliga: Westfalen"
+  },
+  {
+    "country": "Hungary",
+    "league": "NB I"
+  },
+  {
+    "country": "Iceland",
+    "league": "Besta deildin"
+  },
+  {
+    "country": "Indonesia",
+    "league": "Super League"
+  },
+  {
+    "country": "Ireland",
+    "league": "1st Division"
+  },
+  {
+    "country": "Lithuania",
+    "league": "A Lyga"
+  },
+  {
+    "country": "Malaysia",
+    "league": "Super League"
+  },
+  {
+    "country": "Malta",
+    "league": "Malta Premier: Closing Relegation Group"
+  },
+  {
+    "country": "Mexico",
+    "league": "Liga Premier: Serie A Clausura"
+  },
+  {
+    "country": "Northern Ireland",
+    "league": "Championship: Relegation Group"
+  },
+  {
+    "country": "Norway",
+    "league": "3. Division: Group 1"
+  },
+  {
+    "country": "Oman",
+    "league": "Professional League"
+  },
+  {
+    "country": "Paraguay",
+    "league": "Division Profesional: Apertura"
+  },
+  {
+    "country": "Paraguay",
+    "league": "Division Intermedia"
+  },
+  {
+    "country": "Poland",
+    "league": "II Liga"
+  },
+  {
+    "country": "Romania",
+    "league": "Liga II: Promotion Group"
+  },
+  {
+    "country": "Romania",
+    "league": "Liga II: Relegation: Group A"
+  },
+  {
+    "country": "Romania",
+    "league": "Liga II: Relegation: Group B"
+  },
+  {
+    "country": "Singapore",
+    "league": "Premier League"
+  },
+  {
+    "country": "Slovenia",
+    "league": "Prva Liga"
+  },
+  {
+    "country": "Spain",
+    "league": "Primera Division RFEF: Group 2"
+  },
+  {
+    "country": "Sweden",
+    "league": "Division 1: North"
+  },
+  {
+    "country": "Sweden",
+    "league": "Division 1: South"
+  },
+  {
+    "country": "Sweden",
+    "league": "Division 2: Norra Goetaland"
+  },
+  {
+    "country": "Sweden",
+    "league": "Division 2: Soedra Goetaland"
+  },
+  {
+    "country": "Sweden",
+    "league": "Division 2: Vaestra Goetaland"
+  },
+  {
+    "country": "Tunisia",
+    "league": "Ligue I"
+  },
+  {
+    "country": "Ukraine",
+    "league": "Premier League"
+  },
+  {
+    "country": "Uruguay",
+    "league": "Primera División: Apertura"
+  },
+  {
+    "country": "Uruguay",
+    "league": "Segunda División: Group B"
+  },
+  {
+    "country": "USA",
+    "league": "MLS Next Pro"
+  },
+  {
+    "country": "Vietnam",
+    "league": "V-League"
+  },
+  {
+    "country": "Moldova",
+    "league": "Super Liga: Qualification Group"
+  },
+  {
+    "country": "International",
+    "league": "Qualification Rd. 2: Group A4"
+  },
+  {
+    "country": "International",
+    "league": "Qualification Rd. 2: Group A6"
+  },
+  {
+    "country": "Argentina",
+    "league": "Primera B Metropolitana"
+  },
+  {
+    "country": "England",
+    "league": "National League"
+  },
+  {
+    "country": "Scotland",
+    "league": "Premiership"
+  },
+  {
+    "country": "USA",
+    "league": "MLS"
+  },
+  {
+    "country": "International",
+    "league": "CAF Champions League: Final Stage"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie A"
+  },
+  {
+    "country": "Switzerland",
+    "league": "Super League"
+  },
+  {
+    "country": "Sweden",
+    "league": "Allsvenskan"
+  },
+  {
+    "country": "Czech Republic",
+    "league": "1st League"
+  },
+  {
+    "country": "Austria",
+    "league": "Bundesliga: Relegation"
+  },
+  {
+    "country": "Japan",
+    "league": "J1 League: East"
+  },
+  {
+    "country": "Republic of Korea",
+    "league": "K-League 1"
+  },
+  {
+    "country": "Albania",
+    "league": "Kategoria Superiore"
+  },
+  {
+    "country": "Andorra",
+    "league": "1st Division"
+  },
+  {
+    "country": "Australia",
+    "league": "NPL Capital"
+  },
+  {
+    "country": "Australia",
+    "league": "NPL New South Wales"
+  },
+  {
+    "country": "Australia",
+    "league": "Northern New South Wales"
+  },
+  {
+    "country": "Belgium",
+    "league": "National 1 ACFF: Promotion Round"
+  },
+  {
+    "country": "Belgium",
+    "league": "National 1 ACFF: Relegation Round"
+  },
+  {
+    "country": "Belgium",
+    "league": "National Division 1 VV"
+  },
+  {
+    "country": "Belgium",
+    "league": "Belgian Pro League Playoff: Championship Group"
+  },
+  {
+    "country": "Belgium",
+    "league": "Belgian Pro League: Relegation Group"
+  },
+  {
+    "country": "Bosnia and Herzegovina",
+    "league": "Premier League"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie C: 1st Stage"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie D: Group A1"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie D: Group A3"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie D: Group A4"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie D: Group A5"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie D: Group A6"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie D: Group A7"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie D: Group A9"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie D: Group A10"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie D: Group A11"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie D: Group A12"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie D: Group A13"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie D: Group A14"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie D: Group A15"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie D: Group A16"
+  },
+  {
+    "country": "Canada",
+    "league": "Premier League"
+  },
+  {
+    "country": "Chile",
+    "league": "Primera B"
+  },
+  {
+    "country": "China",
+    "league": "League One"
+  },
+  {
+    "country": "Denmark",
+    "league": "Danmarksserien: Promotion Play-off: Group 2"
+  },
+  {
+    "country": "Denmark",
+    "league": "Danmarksserien: Relegation Play-off: Group 2"
+  },
+  {
+    "country": "El Salvador",
+    "league": "Primera Division: Clausura"
+  },
+  {
+    "country": "England",
+    "league": "National League: South"
+  },
+  {
+    "country": "England",
+    "league": "Northern Premier League"
+  },
+  {
+    "country": "England",
+    "league": "Southern League Premier: Central"
+  },
+  {
+    "country": "England",
+    "league": "Southern League Premier: South"
+  },
+  {
+    "country": "England",
+    "league": "Isthmian League Premier Division"
+  },
+  {
+    "country": "Gabon",
+    "league": "Championnat: Division 1"
+  },
+  {
+    "country": "Gibraltar",
+    "league": "National League: Championship Group"
+  },
+  {
+    "country": "Hong Kong",
+    "league": "Premier League"
+  },
+  {
+    "country": "Hungary",
+    "league": "NB II"
+  },
+  {
+    "country": "Iceland",
+    "league": "Cup"
+  },
+  {
+    "country": "Israel",
+    "league": "Premier League"
+  },
+  {
+    "country": "Italy",
+    "league": "Serie D: Group C"
+  },
+  {
+    "country": "Italy",
+    "league": "Serie D: Group H"
+  },
+  {
+    "country": "Italy",
+    "league": "Campionato Primavera 1"
+  },
+  {
+    "country": "Kazakhstan",
+    "league": "Premier League"
+  },
+  {
+    "country": "Kosovo",
+    "league": "Superleague"
+  },
+  {
+    "country": "Malta",
+    "league": "Malta Premier: Closing Championship Group"
+  },
+  {
+    "country": "Moldova",
+    "league": "Super Liga: Championship Group"
+  },
+  {
+    "country": "Netherlands",
+    "league": "Tweede Divisie"
+  },
+  {
+    "country": "Nigeria",
+    "league": "NPFL"
+  },
+  {
+    "country": "Northern Ireland",
+    "league": "Championship: Promotion Group"
+  },
+  {
+    "country": "Norway",
+    "league": "2. division: group 1"
+  },
+  {
+    "country": "Norway",
+    "league": "2. Division: Group 2"
+  },
+  {
+    "country": "Poland",
+    "league": "III Liga: Group 1"
+  },
+  {
+    "country": "Poland",
+    "league": "III Liga: Group 2"
+  },
+  {
+    "country": "Poland",
+    "league": "III Liga: Group 3"
+  },
+  {
+    "country": "Poland",
+    "league": "III Liga: Group 4"
+  },
+  {
+    "country": "Portugal",
+    "league": "Liga 3: Promotion Group"
+  },
+  {
+    "country": "Portugal",
+    "league": "Liga 3: Relegation Group A"
+  },
+  {
+    "country": "Portugal",
+    "league": "Liga 3: Relegation Group B"
+  },
+  {
+    "country": "Republic of Korea",
+    "league": "K League 2"
+  },
+  {
+    "country": "Republic of Korea",
+    "league": "K3 League"
+  },
+  {
+    "country": "Scotland",
+    "league": "League 2"
+  },
+  {
+    "country": "Slovakia",
+    "league": "Super Liga: Championship Group 23/24"
+  },
+  {
+    "country": "Slovakia",
+    "league": "Super Liga: Relegation Group 23/24"
+  },
+  {
+    "country": "Spain",
+    "league": "Segunda Division RFEF: Group 2"
+  },
+  {
+    "country": "Spain",
+    "league": "Segunda Division RFEF: Group 5"
+  },
+  {
+    "country": "Sweden",
+    "league": "Division 2: Norra Svealand"
+  },
+  {
+    "country": "Sweden",
+    "league": "Division 2: Soedra Svealand"
+  },
+  {
+    "country": "Sweden",
+    "league": "Division 2: Norrland Norra"
+  },
+  {
+    "country": "Sweden",
+    "league": "Division 2: Norrland Soedra"
+  },
+  {
+    "country": "Thailand",
+    "league": "Thai League"
+  },
+  {
+    "country": "Uruguay",
+    "league": "Segunda División: Group A"
+  },
+  {
+    "country": "USA",
+    "league": "USL Super League Women"
+  },
+  {
+    "country": "Venezuela",
+    "league": "Primera Division: Apertura"
+  },
+  {
+    "country": "Venezuela",
+    "league": "Segunda División: Occidental"
+  },
+  {
+    "country": "International",
+    "league": "Qualification Rd. 2: Group A5"
+  },
+  {
+    "country": "International",
+    "league": "Qualification Rd. 2: Group B6"
+  },
+  {
+    "country": "Japan",
+    "league": "J1 League: West"
+  },
+  {
+    "country": "Japan",
+    "league": "J2 League: East B"
+  },
+  {
+    "country": "Japan",
+    "league": "J2 League: West A"
+  },
+  {
+    "country": "Japan",
+    "league": "J2 League: West B"
+  },
+  {
+    "country": "Bolivia",
+    "league": "Primera Division"
+  },
+  {
+    "country": "England",
+    "league": "EFL Trophy: Knockout Stage"
+  },
+  {
+    "country": "Denmark",
+    "league": "Superliga: Relegation Group"
+  },
+  {
+    "country": "Romania",
+    "league": "Liga 1: Championship Group"
+  },
+  {
+    "country": "Argentina",
+    "league": "Federal A: Group A"
+  },
+  {
+    "country": "Argentina",
+    "league": "Federal A: Group B"
+  },
+  {
+    "country": "Argentina",
+    "league": "Federal A: Group C"
+  },
+  {
+    "country": "Argentina",
+    "league": "Federal A: Group D"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie D: Group A2"
+  },
+  {
+    "country": "Brazil",
+    "league": "Serie D: Group A8"
+  },
+  {
+    "country": "Faroe Islands",
+    "league": "Premier League"
+  },
+  {
+    "country": "Italy",
+    "league": "Serie D: Group A"
+  },
+  {
+    "country": "Italy",
+    "league": "Serie D: Group E"
+  },
+  {
+    "country": "Italy",
+    "league": "Serie D: Group G"
+  },
+  {
+    "country": "Jamaica",
+    "league": "Premier League"
+  },
+  {
+    "country": "Luxembourg",
+    "league": "National Division"
+  },
+  {
+    "country": "Portugal",
+    "league": "Campeonato de Portugal: Group B"
+  },
+  {
+    "country": "Portugal",
+    "league": "Campeonato de Portugal: Group C"
+  },
+  {
+    "country": "Portugal",
+    "league": "Campeonato de Portugal: Group D"
+  },
+  {
+    "country": "Spain",
+    "league": "Segunda Division RFEF: Group 1"
+  },
+  {
+    "country": "Spain",
+    "league": "Segunda Division RFEF: Group 3"
+  },
+  {
+    "country": "Spain",
+    "league": "Segunda Division RFEF: Group 4"
+  },
+  {
+    "country": "Taiwan",
+    "league": "Premier League"
+  },
+  {
+    "country": "Turkiye",
+    "league": "2nd Lig: Red Group"
+  },
+  {
+    "country": "Wales",
+    "league": "Welsh Cup"
+  },
+  {
+    "country": "International",
+    "league": "Qualification Rd. 2: Group A2"
+  },
+  {
+    "country": "International",
+    "league": "Qualification Rd. 2: Group A7"
+  },
+  {
+    "country": "International",
+    "league": "Qualification Rd. 2: Group B2"
+  },
+  {
+    "country": "Asia",
+    "league": "Champions League: Round of 16"
+  },
+  {
+    "country": "Women's World Cup Qualification",
+    "league": "UEFA Qualification: Group B1"
+  },
+  {
+    "country": "Women's World Cup Qualification",
+    "league": "UEFA Qualification: Group C4"
+  },
+  {
+    "country": "Women's World Cup Qualification",
+    "league": "UEFA Qualification: Group A4"
+  },
+  {
+    "country": "Women's World Cup Qualification",
+    "league": "UEFA Qualification: Group A3"
+  },
+  {
+    "country": "Cyprus",
+    "league": "1st Division: Championship"
+  },
+  {
+    "country": "Peru",
+    "league": "Liga 1: Apertura"
+  },
+  {
+    "country": "Slovakia",
+    "league": "Slovak Cup"
+  },
+  {
+    "country": "USA",
+    "league": "US Open Cup"
+  },
+  {
+    "country": "Women's World Cup Qualification",
+    "league": "UEFA Qualification: Group A1"
+  },
+  {
+    "country": "Women's World Cup Qualification",
+    "league": "UEFA Qualification: Group A2"
+  },
+  {
+    "country": "Women's World Cup Qualification",
+    "league": "UEFA Qualification: Group B2"
+  },
+  {
+    "country": "Women's World Cup Qualification",
+    "league": "UEFA Qualification: Group B3"
+  },
+  {
+    "country": "Women's World Cup Qualification",
+    "league": "UEFA Qualification: Group B4"
+  },
+  {
+    "country": "Women's World Cup Qualification",
+    "league": "UEFA Qualification: Group C1"
+  },
+  {
+    "country": "Women's World Cup Qualification",
+    "league": "UEFA Qualification: Group C2"
+  },
+  {
+    "country": "Women's World Cup Qualification",
+    "league": "UEFA Qualification: Group C3"
+  },
+  {
+    "country": "Women's World Cup Qualification",
+    "league": "UEFA Qualification: Group C5"
+  },
+  {
+    "country": "Women's World Cup Qualification",
+    "league": "UEFA Qualification: Group C6"
+  },
+  {
+    "country": "Belarus",
+    "league": "Cup"
+  },
+  {
+    "country": "Bahrain",
+    "league": "Premier League"
+  },
+  {
+    "country": "UEFA Youth League",
+    "league": "Final Stage"
+  },
+  {
+    "country": "Cyprus",
+    "league": "1st Division: Relegation"
+  },
+  {
+    "country": "Spain",
+    "league": "Copa del Rey: Final"
+  },
+  {
+    "country": "Scotland",
+    "league": "Scottish Cup: Semi-Finals"
+  },
+  {
+    "country": "Greece",
+    "league": "Super League: Conference League Group"
+  },
+  {
+    "country": "Botswana",
+    "league": "Premier League"
+  },
+  {
+    "country": "China",
+    "league": "FA Cup"
+  },
+  {
+    "country": "Cyprus",
+    "league": "2nd Division: Promotion"
+  },
+  {
+    "country": "Cyprus",
+    "league": "2nd Division: Relegation"
+  },
+  {
+    "country": "Ireland",
+    "league": "Women's Premier Division"
+  },
+  {
+    "country": "Kenya",
+    "league": "Premier League"
+  },
+  {
+    "country": "Norway",
+    "league": "Women's 1. Division"
+  },
+  {
+    "country": "Peru",
+    "league": "Liga 2: Group A"
+  },
+  {
+    "country": "Peru",
+    "league": "Liga 2: Group B"
+  },
+  {
+    "country": "Serbia",
+    "league": "Prva Liga: Championship Group"
+  },
+  {
+    "country": "Serbia",
+    "league": "Prva Liga: Relegation Group"
+  },
+  {
+    "country": "Switzerland",
+    "league": "Cup"
+  },
+  {
+    "country": "Wales",
+    "league": "Cymru Premier: Championship Group 25/26"
+  },
+  {
+    "country": "Wales",
+    "league": "Cymru Premier: Relegation Group 25/26"
+  },
+  {
+    "country": "Zambia",
+    "league": "Super League"
+  },
+  {
+    "country": "Netherlands",
+    "league": "KNVB Beker: Final"
+  },
+  {
+    "country": "Greece",
+    "league": "Super League: Championship"
+  },
+  {
+    "country": "Greece",
+    "league": "Super League 2: South: Relegation Group"
+  }
+]

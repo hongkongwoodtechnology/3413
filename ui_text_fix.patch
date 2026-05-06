@@ -1,0 +1,11 @@
+diff --git a/src/app/admin/page.tsx b/src/app/admin/page.tsx
+index 1234567..89abcdef 100644
+--- a/src/app/admin/page.tsx
++++ b/src/app/admin/page.tsx
+@@ -106,5 +106,5 @@
+         <Card className="border-slate-200 shadow-sm">
+           <CardHeader className="flex flex-row items-center justify-between pb-2">
+-            <CardTitle className="text-sm font-medium text-slate-500">總投注金額 (USDC)</CardTitle>
++            <CardTitle className="text-sm font-medium text-slate-500">即時投注池金額 (USDC)</CardTitle>
+             <DollarSign className="h-4 w-4 text-emerald-500" />
+           </CardHeader>

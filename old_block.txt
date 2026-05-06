@@ -1,0 +1,28 @@
+// Refund logic: check if only 1 outcome has bets at the end of betting (>=80 mins or finished)
+                if (!marketDb[matchObj.id].refundProcessed && (matchObj.liveMinute >= 80 || matchObj.status === 'finished')) {
+                    const l = matchObj.marketData.liabilities;
+                    const outcomesWithBets = [l.home > 0, l.draw > 0, l.away > 0].filter(Boolean).length;
+                    
+                    if (outcomesWithBets === 1) {
+                        marketDb[matchObj.id].refundProcessed = true;
+                        marketDbModified = true;
+                        
+                        const db = getBetsDb();
+                        if (db) {
+                            for (const address of Object.keys(db)) {
+                                for (const bet of db[address]) {
+                                    if (bet.matchId === matchObj.id && bet.status === 'pending') {
+                                        bet.status = 'refunded';
+                                        betsDbModified = true;
+                                        // Refund balance logic could go here if we were using a real balance DB
+                                        console.log(`[Refund] Refunded bet ${bet.id} for match ${matchObj.id}`);
+                                    }
+                                }
+                            }
+                        }
+                    } else if (outcomesWithBets > 1) {
+                        // Mark as processed so we don't check again
+                        marketDb[matchObj.id].refundProcessed = true;
+                        marketDbModified = true;
+                    }
+                }

@@ -1,0 +1,147 @@
+import { GET, POST } from './route';
+
+describe('Referral API', () => {
+    it('should return 400 if address is not provided in GET request', async () => {
+        const req = new Request('http://localhost:3000/api/referral');
+        const res = await GET(req);
+        
+        expect(res.status).toBe(400);
+        const json = await res.json();
+        expect(json.error).toBe('Address is required');
+    });
+
+    it('should return default data for a new address', async () => {
+        const testAddress = '0xTest123';
+        const req = new Request(`http://localhost:3000/api/referral?address=${testAddress}`);
+        const res = await GET(req);
+        
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        
+        expect(json.data).toBeDefined();
+        expect(json.data.stats).toBeDefined();
+        expect(json.data.commissions).toBeDefined();
+        expect(json.data.referees).toBeDefined();
+        expect(json.data.balances).toBeDefined();
+        
+        // Assert some default mock data values
+        expect(json.data.stats.friends).toBe(0);
+        expect(json.data.commissions.length).toBe(0);
+        expect(json.data.referees.length).toBe(0);
+        expect(json.data.balances.bonus).toBe(0);
+    });
+
+    it('should add a new referee via POST request', async () => {
+        const testAddress = '0xTest123';
+        const newRefereeAddress = '0xNewUser456';
+        
+        const req = new Request('http://localhost:3000/api/referral', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ address: testAddress, newRefereeAddress })
+        });
+        
+        const res = await POST(req);
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        
+        expect(json.success).toBe(true);
+        // Friends count should increase by 1 (0 -> 1)
+        expect(json.data.stats.friends).toBe(1);
+        // Referees array should have one more item (0 -> 1)
+        expect(json.data.referees.length).toBe(1);
+        // The first referee should be the newly added one
+        expect(json.data.referees[0].address).toBe(newRefereeAddress);
+        expect(json.data.referees[0].joinDateValue).toBe(0);
+        expect(json.data.referees[0].rewardIssued).toBe(false);
+    });
+
+    it('should issue 100U bonus when referee volume reaches 3U', async () => {
+        const referrer = '0xReferrer';
+        const referee = '0xRefereeThreshold';
+        
+        // 1. Bind referral
+        await POST(new Request('http://localhost:3000/api/referral', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ address: referrer, newRefereeAddress: referee })
+        }));
+
+        // 2. Place bet of 2U (Not enough for bonus)
+        await POST(new Request('http://localhost:3000/api/referral', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'place_bet', userAddress: referee, referrerAddress: referrer, betAmount: 2 })
+        }));
+
+        // Check balances (should be 0)
+        let res = await GET(new Request(`http://localhost:3000/api/referral?address=${referee}`));
+        let json = await res.json();
+        expect(json.data.balances.bonus).toBe(0);
+
+        // 3. Place another bet of 1.5U (Total = 3.5U, should trigger bonus)
+        await POST(new Request('http://localhost:3000/api/referral', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'place_bet', userAddress: referee, referrerAddress: referrer, betAmount: 1.5 })
+        }));
+
+        // Check balances (should be 100)
+        res = await GET(new Request(`http://localhost:3000/api/referral?address=${referee}`));
+        json = await res.json();
+        expect(json.data.balances.bonus).toBe(100);
+
+        // Check referrer state (rewardIssued should be true)
+        res = await GET(new Request(`http://localhost:3000/api/referral?address=${referrer}`));
+        json = await res.json();
+        const refRecord = json.data.referees.find((r: any) => r.address === referee);
+        expect(refRecord.totalVolumeValue).toBe(3.5);
+        expect(refRecord.rewardIssued).toBe(true);
+
+        // 4. Place another bet (Should NOT trigger bonus again)
+        await POST(new Request('http://localhost:3000/api/referral', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'place_bet', userAddress: referee, referrerAddress: referrer, betAmount: 5 })
+        }));
+
+        // Check balances (should still be 100)
+        res = await GET(new Request(`http://localhost:3000/api/referral?address=${referee}`));
+        json = await res.json();
+        expect(json.data.balances.bonus).toBe(100); // Idempotency check passed
+    });
+
+    it('should NOT issue bonus if user has no referrer (independent account)', async () => {
+        const independentUser = '0xIndependentUser';
+        
+        // Place bet of 5U (Over 3U threshold, but NO referrer provided)
+        await POST(new Request('http://localhost:3000/api/referral', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                action: 'place_bet', 
+                userAddress: independentUser, 
+                // referrerAddress is omitted/null
+                betAmount: 5 
+            })
+        }));
+
+        // Check balances (should remain 0 because they have no referrer)
+        const res = await GET(new Request(`http://localhost:3000/api/referral?address=${independentUser}`));
+        const json = await res.json();
+        expect(json.data.balances.bonus).toBe(0);
+    });
+
+    it('should return 400 if POST request misses parameters', async () => {
+        const req = new Request('http://localhost:3000/api/referral', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ address: '0xTest123' }) // Missing newRefereeAddress
+        });
+        
+        const res = await POST(req);
+        expect(res.status).toBe(400);
+        const json = await res.json();
+        expect(json.error).toBe('Missing parameters');
+    });
+});

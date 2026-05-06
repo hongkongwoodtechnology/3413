@@ -1,0 +1,449 @@
+{
+  "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg": {
+    "stats": {
+      "total": "0 USDT",
+      "withdrawable": "0 USDT",
+      "month": "0 USDT",
+      "friends": 0
+    },
+    "commissions": [],
+    "referees": [],
+    "balances": {
+      "usdt": 0,
+      "bonus": 0
+    }
+  },
+  "FhehP5xXeHrMSFZkti2vAXDm4ZJeqXNu3vARGCTV8pkf": {
+    "stats": {
+      "total": "0.000000 USDT",
+      "withdrawable": "0.000000 USDT",
+      "month": "0.000000 USDT",
+      "friends": 1
+    },
+    "commissions": [
+      {
+        "id": "comm-1778010648192-9pglko",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.020000",
+        "fee": "0.001600",
+        "commission": "0.000480",
+        "timestamp": "2026-05-05T19:50:48.192Z",
+        "status": "pending",
+        "signature": "3jn6VwP8mrBXZoHmdX62cqVMtWL5zxA8GaaDXZytdEP6dxfQfNwzHn1pP8RDn3q6vQ1w9Np7c1saRqNB5YJt6U9K"
+      },
+      {
+        "id": "comm-1778003604412-1gf66h",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.030000",
+        "fee": "0.002400",
+        "commission": "0.000720",
+        "timestamp": "2026-05-05T17:53:24.412Z",
+        "status": "pending",
+        "signature": "4AADdsQUPoaNzwPteJebjDWFfbG2822hVzMix25kNPp6Qw21Y3VfqiV85Zi1UNpMnshA89fe9p8uyjiLEzvnv6LJ"
+      },
+      {
+        "id": "comm-1778003580425-gfjhyz",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.040000",
+        "fee": "0.003200",
+        "commission": "0.000960",
+        "timestamp": "2026-05-05T17:53:00.425Z",
+        "status": "pending",
+        "signature": "38fVZawPFWXjPbbhnHUEDyCbkNQbEWPz2XLxKADfjSYHDWj4oqWoCPno9VyQByytPCMruUxbvhQCLxfngXBYTsyD"
+      },
+      {
+        "id": "comm-1778003529227-owcspe",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.010000",
+        "fee": "0.000800",
+        "commission": "0.000240",
+        "timestamp": "2026-05-05T17:52:09.227Z",
+        "status": "pending",
+        "signature": "u3Sd35AY7s9piznhSgpCBArfx9T9mFpAFSDjtxumCKW9Jy1DCZR2ZjSKJT8xGfwEy2gj9p1emkAQp7NyyHXUQSF"
+      },
+      {
+        "id": "comm-1777834638498-i53rub",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.050000",
+        "fee": "0.004000",
+        "commission": "0.001200",
+        "timestamp": "2026-05-03T18:57:18.498Z",
+        "status": "pending",
+        "signature": "2P7kezyc2XiCfPWnzh8X5xRoxj2C1BAQRATsrKRASbSwmxXamG8XrQ8nMq4dmxhdGCa7eKnX5EDmAftvYE7enKp7"
+      },
+      {
+        "id": "comm-1777834548229-wrsftf",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.050000",
+        "fee": "0.004000",
+        "commission": "0.001200",
+        "timestamp": "2026-05-03T18:55:48.229Z",
+        "status": "pending",
+        "signature": "ZzKrBXoZHhee9xiV26142sw2C4uurXoFnSCGPSyFQ36o7ycH2yXx8f3xsnyR3tzABmQkHz1iW7Smoef7Xv2Ak9T"
+      },
+      {
+        "id": "comm-1777834532638-1a1hja",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.010000",
+        "fee": "0.000800",
+        "commission": "0.000240",
+        "timestamp": "2026-05-03T18:55:32.638Z",
+        "status": "pending",
+        "signature": "5C6U51mKbtoV1PeMfjaRL7mYpBjJPXocJ51SX3V3qBfdEZTEpKrStaJCsRYPRNCWh678xKFRgfN1snTiYVKdLMB1"
+      },
+      {
+        "id": "comm-1777761260838-5r9i43",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.200000",
+        "fee": "0.016000",
+        "commission": "0.004800",
+        "timestamp": "2026-05-02T22:34:20.838Z",
+        "status": "pending",
+        "signature": "5JEDFp3njWXeY11ACTcXprHFAtyV55hjkfQViZXGiEVoe8nXT6sagtmqXh5wqvfXepXpieVmN5q4QjZcvecVW2P4"
+      },
+      {
+        "id": "comm-1777761117570-tb2cq8",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.400000",
+        "fee": "0.032000",
+        "commission": "0.009600",
+        "timestamp": "2026-05-02T22:31:57.571Z",
+        "status": "pending",
+        "signature": "5wpve2v85kAgXDPUKK3vJ7yBVLC3Py2MJwhNtJJS1cdGjPLxTAZQubyKuRAuvEm55UgJoYXac1P3spAUgfRPot6d"
+      },
+      {
+        "id": "comm-1777760756008-3nq0h4",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.400000",
+        "fee": "0.032000",
+        "commission": "0.009600",
+        "timestamp": "2026-05-02T22:25:56.008Z",
+        "status": "pending",
+        "signature": "ixDAHVBLYcU7VusYc54gQ1oZcqwbKkF2f6eQwvGwg8dahu1SdKi93bLHMZptgTZ7fk5yK3Sj8wgmZw3scY8tfUB"
+      },
+      {
+        "id": "comm-1777760729434-8hv5oa",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.200000",
+        "fee": "0.016000",
+        "commission": "0.004800",
+        "timestamp": "2026-05-02T22:25:29.434Z",
+        "status": "pending",
+        "signature": "HBbWLBt4ZynfvcmXBUhJfSSh41BTGidqEVPvGj54ULKnQPRu4ceEc6cgoVs5CkLdHEmehkheDbNHqs4NMmSdU17"
+      },
+      {
+        "id": "comm-1777760701641-trxnx2",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.200000",
+        "fee": "0.016000",
+        "commission": "0.004800",
+        "timestamp": "2026-05-02T22:25:01.641Z",
+        "status": "pending",
+        "signature": "2fuN7yuWcoHy7pt97P6cmKWCTMKRVYn4ErcprN7WMCinWajwHvQzLCY5rRrqmHvdE9J8UjNZfMAJB3ERenddVZfL"
+      },
+      {
+        "id": "comm-1777760670412-2pe4hq",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.100000",
+        "fee": "0.008000",
+        "commission": "0.002400",
+        "timestamp": "2026-05-02T22:24:30.412Z",
+        "status": "pending",
+        "signature": "xkW32hLkgAWdQvnSYwH5Zb9uRfvTUCk5B99bM2z585GEonUcXLdNvj9mDFLhBohtd8ci5dj9R4SmLNAk2BMM8Cg"
+      },
+      {
+        "id": "comm-1777760649511-rfd0g9",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.010000",
+        "fee": "0.000800",
+        "commission": "0.000240",
+        "timestamp": "2026-05-02T22:24:09.511Z",
+        "status": "pending",
+        "signature": "3XtXfsyYoaZkbTFrBRVeSNf1VGq3ZmdV1ndPckSh4aeRzx4cCc2H4L9F7v923CAMyYWziLbBHw2enUyJj2A8M83m"
+      },
+      {
+        "id": "comm-1777753703392-hdd5ni",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.010000",
+        "fee": "0.000800",
+        "commission": "0.000240",
+        "timestamp": "2026-05-02T20:28:23.392Z",
+        "status": "pending",
+        "signature": "5RMQirvmREXg46U3HDGBADyFBzwbrSZnphXkze5ZHrkkxAG3UEqb4pEDQazTGrd4GNPLKad4Buv3FZTzZbFQTSDL"
+      },
+      {
+        "id": "comm-1777750761550-xlivtp",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.010000",
+        "fee": "0.000800",
+        "commission": "0.000240",
+        "timestamp": "2026-05-02T19:39:21.550Z",
+        "status": "pending",
+        "signature": "3QFi2QepRPYFVcZXiKTjHubQMaeVwpAK6oJ4pW8LNKZLmcaqLYc5eL8FXR93VYf1zkDG2a5FZkfGFNMLQh3K7gHQ"
+      },
+      {
+        "id": "comm-1777587535458-k7cnlc",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "1.000000",
+        "fee": "0.080000",
+        "commission": "0.024000",
+        "timestamp": "2026-04-30T22:18:55.458Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-1777584323647-7znv7z",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "1.000000",
+        "fee": "0.080000",
+        "commission": "0.024000",
+        "timestamp": "2026-04-30T21:25:23.647Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-1777584128857-oztmul",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.010000",
+        "fee": "0.000800",
+        "commission": "0.000240",
+        "timestamp": "2026-04-30T21:22:08.857Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1776795208592-z7t21",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "1.000000",
+        "fee": "0.080000",
+        "commission": "0.024000",
+        "timestamp": "2026-04-21T18:13:28.565Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1776802701172-w0d6ru",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "1.000000",
+        "fee": "0.080000",
+        "commission": "0.024000",
+        "timestamp": "2026-04-21T20:18:21.147Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1777047139153-ydngp",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.010000",
+        "fee": "0.000800",
+        "commission": "0.000240",
+        "timestamp": "2026-04-24T16:12:14.100Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1777480294078-ktg50b",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.010000",
+        "fee": "0.000800",
+        "commission": "0.000240",
+        "timestamp": "2026-04-29T16:31:34.054Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1777481679060-s0n9ga",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.100000",
+        "fee": "0.008000",
+        "commission": "0.002400",
+        "timestamp": "2026-04-29T16:54:39.036Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1777482212251-n2qx8l",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.010000",
+        "fee": "0.000800",
+        "commission": "0.000240",
+        "timestamp": "2026-04-29T17:03:32.210Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1777482236031-p5kyq",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.100000",
+        "fee": "0.008000",
+        "commission": "0.002400",
+        "timestamp": "2026-04-29T17:03:56.014Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1777482268623-irwm4p",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "1.000000",
+        "fee": "0.080000",
+        "commission": "0.024000",
+        "timestamp": "2026-04-29T17:04:28.603Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1777482300016-ichk7k",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.200000",
+        "fee": "0.016000",
+        "commission": "0.004800",
+        "timestamp": "2026-04-29T17:04:59.991Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1777482941424-tii6ta",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.200000",
+        "fee": "0.016000",
+        "commission": "0.004800",
+        "timestamp": "2026-04-29T17:15:41.398Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1777486206418-dtbc9f",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.010000",
+        "fee": "0.000800",
+        "commission": "0.000240",
+        "timestamp": "2026-04-29T18:10:06.390Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1777487771998-1538ko",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.010000",
+        "fee": "0.000800",
+        "commission": "0.000240",
+        "timestamp": "2026-04-29T18:36:11.954Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1777487858531-adsfvp",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "2.000000",
+        "fee": "0.160000",
+        "commission": "0.048000",
+        "timestamp": "2026-04-29T18:37:38.414Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1777487911771-sa8b",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.050000",
+        "fee": "0.004000",
+        "commission": "0.001200",
+        "timestamp": "2026-04-29T18:38:31.747Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1777494809430-i006b",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.010000",
+        "fee": "0.000800",
+        "commission": "0.000240",
+        "timestamp": "2026-04-29T20:33:29.401Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1777494834702-flcmug",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.300000",
+        "fee": "0.024000",
+        "commission": "0.007200",
+        "timestamp": "2026-04-29T20:33:54.676Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1777499425813-lletif",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "0.010000",
+        "fee": "0.000800",
+        "commission": "0.000240",
+        "timestamp": "2026-04-29T21:50:12.743Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1777499455373-s4z2mk",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "2.000000",
+        "fee": "0.160000",
+        "commission": "0.048000",
+        "timestamp": "2026-04-29T21:50:55.354Z",
+        "status": "pending"
+      },
+      {
+        "id": "comm-bet-1777499507247-zy4cil",
+        "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "betAmount": "4.000000",
+        "fee": "0.320000",
+        "commission": "0.096000",
+        "timestamp": "2026-04-29T21:51:47.225Z",
+        "status": "pending"
+      }
+    ],
+    "referees": [
+      {
+        "id": "ref-new-1776791794973",
+        "address": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
+        "joinDateValue": 0,
+        "totalVolumeValue": 14.029999999999996,
+        "earnedCommissionValue": 0.3367200000000001,
+        "rewardIssued": true
+      }
+    ],
+    "balances": {
+      "usdt": 0,
+      "bonus": 1000
+    }
+  },
+  "2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K": {
+    "stats": {
+      "total": "0.000000 USDT",
+      "withdrawable": "0.000000 USDT",
+      "month": "0.000000 USDT",
+      "friends": 0
+    },
+    "commissions": [],
+    "referees": [],
+    "balances": {
+      "usdt": 0,
+      "bonus": 0
+    }
+  },
+  "9FfHYyK8ZKsA82BPtierU4sWmwTS8QTGqrGqtTt6tEu7": {
+    "stats": {
+      "total": "0.000000 USDT",
+      "withdrawable": "0.000000 USDT",
+      "month": "0.000000 USDT",
+      "friends": 1
+    },
+    "commissions": [],
+    "referees": [
+      {
+        "id": "ref-new-1776790241646",
+        "address": "FhehP5xXeHrMSFZkti2vAXDm4ZJeqXNu3vARGCTV8pkf",
+        "joinDateValue": 0,
+        "totalVolumeValue": 0,
+        "earnedCommissionValue": 0,
+        "rewardIssued": false
+      }
+    ],
+    "balances": {
+      "usdt": 0,
+      "bonus": 0
+    }
+  },
+  "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN": {
+    "stats": {
+      "total": "0.000000 USDT",
+      "withdrawable": "0.000000 USDT",
+      "month": "0.000000 USDT",
+      "friends": 0
+    },
+    "commissions": [],
+    "referees": [],
+    "balances": {
+      "usdt": 0,
+      "bonus": 100
+    }
+  }
+}

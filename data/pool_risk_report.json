@@ -1,0 +1,198 @@
+{
+  "metadata": {
+    "total_pool_usd": 10000000,
+    "profit_margin": 0.08,
+    "return_rate": 0.92,
+    "step_size": 0.01,
+    "total_combinations": 5151,
+    "prior_probs": {
+      "home": 0.45,
+      "draw": 0.27,
+      "away": 0.28
+    }
+  },
+  "summary": {
+    "profitable_all_3": 5151,
+    "loss_possible": 0,
+    "percent_safe": "100.0%",
+    "risk_buckets": {
+      "low": 5151,
+      "medium": 0,
+      "high": 0,
+      "critical": 0
+    },
+    "dominance_buckets": {
+      "extreme": 693,
+      "heavy": 1890,
+      "moderate": 2007,
+      "balanced": 561
+    },
+    "odds_range_home": [
+      "0.92",
+      "91.92"
+    ],
+    "odds_range_draw": [
+      "0.92",
+      "91.95"
+    ],
+    "odds_range_away": [
+      "0.92",
+      "91.95"
+    ],
+    "worst_maxloss": "$0.8000M",
+    "best_minprofit": "$10.0000M",
+    "median_maxloss": "$0.8000M"
+  },
+  "extreme_scenarios": [
+    {
+      "name": "完全均衡 (H=D=A=33.3%)",
+      "distribution": {
+        "H": "33.0%",
+        "D": "33.0%",
+        "A": "34.0%"
+      },
+      "final_odds": {
+        "H": "2.79",
+        "D": "2.79",
+        "A": "2.71"
+      },
+      "worst_pnl": "$0.8000M",
+      "risk_ratio": "0.92x"
+    },
+    {
+      "name": "最差情形 (最大平台亏损)",
+      "distribution": {
+        "H": "0.0%",
+        "D": "0.0%",
+        "A": "100.0%"
+      },
+      "final_odds": {
+        "H": "999.00",
+        "D": "999.00",
+        "A": "0.92"
+      },
+      "worst_pnl": "$0.8000M",
+      "risk_ratio": "0.92x"
+    },
+    {
+      "name": "最优情形 (最高保底利润)",
+      "distribution": {
+        "H": "0.0%",
+        "D": "0.0%",
+        "A": "100.0%"
+      },
+      "final_odds": {
+        "H": "999.00",
+        "D": "999.00",
+        "A": "0.92"
+      },
+      "worst_pnl": "$0.8000M",
+      "risk_ratio": "0.92x"
+    },
+    {
+      "name": "最高集中度 (H=100%)",
+      "distribution": {
+        "H": "100.0%",
+        "D": "0.0%",
+        "A": "0.0%"
+      },
+      "final_odds": {
+        "H": "0.92",
+        "D": "999.00",
+        "A": "999.00"
+      },
+      "worst_pnl": "$0.8000M",
+      "risk_ratio": "0.92x"
+    },
+    {
+      "name": "最高集中度 (D=100%)",
+      "distribution": {
+        "H": "0.0%",
+        "D": "100.0%",
+        "A": "0.0%"
+      },
+      "final_odds": {
+        "H": "999.00",
+        "D": "0.92",
+        "A": "999.00"
+      },
+      "worst_pnl": "$0.8000M",
+      "risk_ratio": "0.92x"
+    },
+    {
+      "name": "最高集中度 (A=100%)",
+      "distribution": {
+        "H": "0.0%",
+        "D": "0.0%",
+        "A": "100.0%"
+      },
+      "final_odds": {
+        "H": "999.00",
+        "D": "999.00",
+        "A": "0.92"
+      },
+      "worst_pnl": "$0.8000M",
+      "risk_ratio": "0.92x"
+    },
+    {
+      "name": "H偏重 (H=55%)",
+      "distribution": {
+        "H": "55.0%",
+        "D": "25.0%",
+        "A": "20.0%"
+      },
+      "final_odds": {
+        "H": "1.67",
+        "D": "3.68",
+        "A": "4.60"
+      },
+      "worst_pnl": "$0.8000M",
+      "risk_ratio": "0.92x"
+    },
+    {
+      "name": "H-D对冲 (H=40%,D=40%)",
+      "distribution": {
+        "H": "40.0%",
+        "D": "40.0%",
+        "A": "20.0%"
+      },
+      "final_odds": {
+        "H": "2.30",
+        "D": "2.30",
+        "A": "4.60"
+      },
+      "worst_pnl": "$0.8000M",
+      "risk_ratio": "0.92x"
+    },
+    {
+      "name": "最低风险比",
+      "distribution": {
+        "H": "0.0%",
+        "D": "0.0%",
+        "A": "100.0%"
+      },
+      "final_odds": {
+        "H": "999.00",
+        "D": "999.00",
+        "A": "0.92"
+      },
+      "worst_pnl": "$0.8000M",
+      "risk_ratio": "0.92x"
+    },
+    {
+      "name": "最高熵 (最分散)",
+      "distribution": {
+        "H": "33.0%",
+        "D": "33.0%",
+        "A": "34.0%"
+      },
+      "final_odds": {
+        "H": "2.79",
+        "D": "2.79",
+        "A": "2.71"
+      },
+      "worst_pnl": "$0.8000M",
+      "risk_ratio": "0.92x"
+    }
+  ]
+}

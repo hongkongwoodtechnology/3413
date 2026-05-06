@@ -1,0 +1,207 @@
+{
+  "total_pool": 10000000,
+  "house_edge": 0.08,
+  "return_rate": 0.92,
+  "min_odds": 1.01,
+  "granularity": "1%",
+  "total_distributions": 5151,
+  "theoretical_space": "~5.0 x 10^13",
+  "risk_buckets": {
+    "critical": 0,
+    "loss": 3,
+    "thin": 15,
+    "good": 1845,
+    "max": 3288
+  },
+  "concentration_buckets": {
+    "extreme": 198,
+    "heavy": 1290,
+    "moderate": 2487,
+    "balanced": 1176
+  },
+  "always_profitable": 5133,
+  "potential_loss": 3,
+  "worst_case": {
+    "distribution": {
+      "hp": 0,
+      "dp": 0,
+      "ap": 1,
+      "hA": 0,
+      "dA": 0,
+      "aA": 10000000,
+      "fairH": null,
+      "fairD": null,
+      "fairA": 1,
+      "offH": 999,
+      "offD": 999,
+      "offA": 1.01,
+      "liabH": 0,
+      "liabD": 0,
+      "liabA": 10100000,
+      "pnlH": 10000000,
+      "pnlD": 10000000,
+      "pnlA": -100000,
+      "worstPnl": -100000,
+      "bestPnl": 10000000,
+      "riskRatio": 1.01,
+      "maxConc": 1,
+      "minConc": 0,
+      "hhi": 1,
+      "riskLabel": "loss",
+      "concLabel": "extreme",
+      "needsFloorH": false,
+      "needsFloorD": false,
+      "needsFloorA": true
+    },
+    "pnl": -100000
+  },
+  "breakeven_concentration": 0.9108910891089109,
+  "odds_range": {
+    "home": [
+      1.01,
+      92
+    ],
+    "draw": [
+      1.01,
+      92
+    ],
+    "away": [
+      1.01,
+      92
+    ]
+  },
+  "key_scenarios": [
+    {
+      "label": "PERFECT BALANCE",
+      "hp": 0.33,
+      "dp": 0.33,
+      "ap": 0.34,
+      "offH": 2.787878787878788,
+      "offD": 2.787878787878788,
+      "offA": 2.705882352941176,
+      "worstPnl": 800000,
+      "riskRatio": 0.92
+    },
+    {
+      "label": "EXTREME H (100% on Home)",
+      "hp": 1,
+      "dp": 0,
+      "ap": 0,
+      "offH": 1.01,
+      "offD": 999,
+      "offA": 999,
+      "worstPnl": -100000,
+      "riskRatio": 1.01
+    },
+    {
+      "label": "EXTREME D (100% on Draw)",
+      "hp": 0,
+      "dp": 1,
+      "ap": 0,
+      "offH": 999,
+      "offD": 1.01,
+      "offA": 999,
+      "worstPnl": -100000,
+      "riskRatio": 1.01
+    },
+    {
+      "label": "EXTREME A (100% on Away)",
+      "hp": 0,
+      "dp": 0,
+      "ap": 1,
+      "offH": 999,
+      "offD": 999,
+      "offA": 1.01,
+      "worstPnl": -100000,
+      "riskRatio": 1.01
+    },
+    {
+      "label": "H HEAVY (70% Home)",
+      "hp": 0.7,
+      "dp": 0.15,
+      "ap": 0.15,
+      "offH": 1.3142857142857145,
+      "offD": 6.133333333333334,
+      "offA": 6.133333333333334,
+      "worstPnl": 799999.9999999981,
+      "riskRatio": 0.9200000000000002
+    },
+    {
+      "label": "D HEAVY (70% Draw)",
+      "hp": 0.15,
+      "dp": 0.7,
+      "ap": 0.15,
+      "offH": 6.133333333333334,
+      "offD": 1.3142857142857145,
+      "offA": 6.133333333333334,
+      "worstPnl": 799999.9999999981,
+      "riskRatio": 0.9200000000000002
+    },
+    {
+      "label": "A HEAVY (70% Away)",
+      "hp": 0.15,
+      "dp": 0.15,
+      "ap": 0.7,
+      "offH": 6.133333333333334,
+      "offD": 6.133333333333334,
+      "offA": 1.3142857142857145,
+      "worstPnl": 799999.9999999981,
+      "riskRatio": 0.9200000000000002
+    },
+    {
+      "label": "H+D HEDGE (40/40)",
+      "hp": 0.4,
+      "dp": 0.4,
+      "ap": 0.2,
+      "offH": 2.3,
+      "offD": 2.3,
+      "offA": 4.6,
+      "worstPnl": 800000,
+      "riskRatio": 0.92
+    },
+    {
+      "label": "H+A HEDGE (40/40)",
+      "hp": 0.4,
+      "dp": 0.2,
+      "ap": 0.4,
+      "offH": 2.3,
+      "offD": 4.6,
+      "offA": 2.3,
+      "worstPnl": 800000,
+      "riskRatio": 0.92
+    },
+    {
+      "label": "BREAKEVEN BOUNDARY (91% H)",
+      "hp": 0.91,
+      "dp": 0.05,
+      "ap": 0.04,
+      "offH": 1.010989010989011,
+      "offD": 18.4,
+      "offA": 23,
+      "worstPnl": 800000,
+      "riskRatio": 0.92
+    },
+    {
+      "label": "PLATFORM WORST",
+      "hp": 0,
+      "dp": 0,
+      "ap": 1,
+      "offH": 999,
+      "offD": 999,
+      "offA": 1.01,
+      "worstPnl": -100000,
+      "riskRatio": 1.01
+    },
+    {
+      "label": "PLATFORM BEST",
+      "hp": 0,
+      "dp": 0.09,
+      "ap": 0.91,
+      "offH": 999,
+      "offD": 10.222222222222223,
+      "offA": 1.010989010989011,
+      "worstPnl": 800000,
+      "riskRatio": 0.92
+    }
+  ]
+}
