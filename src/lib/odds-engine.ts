@@ -10,6 +10,7 @@ import {
   ATTRACTION_WINDOW_MAX_ODDS,
   type AttractionWindowUsage,
   type OutcomeKey,
+  countActiveOutcomes,
   isSingleSidedMarket,
   splitBetByAttractionWindow,
 } from './market-rules';
@@ -178,8 +179,12 @@ export class DynamicOddsEngine {
 
   public calculatePhaseAwareLockedOdds(input: PhaseAwareQuoteInput): PhaseAwareQuoteResult | null {
     const rr = input.returnRate ?? this.baseReturnRate;
+    const activeOutcomeCount = countActiveOutcomes(input.pools);
+    const staysSingleSided =
+      activeOutcomeCount === 0 ||
+      (activeOutcomeCount === 1 && (input.pools[input.selectedOutcome] || 0) > 0);
 
-    if (isSingleSidedMarket(input.pools)) {
+    if (staysSingleSided) {
       return {
         odds: input.initialOdds[input.selectedOutcome] || 1.01,
         riskLevel: 'refund_single_side',

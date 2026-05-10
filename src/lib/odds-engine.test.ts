@@ -20,6 +20,27 @@ describe('phase-aware odds engine', () => {
     expect(quote?.riskLevel).toBe('refund_single_side');
   });
 
+  it('switches to the math model immediately when a bet enters the second side of a single-sided market', () => {
+    const engine = new DynamicOddsEngine();
+    const quote = engine.calculatePhaseAwareLockedOdds({
+      pools: { home: 25, draw: 0, away: 0 },
+      liabilities: { home: 0, draw: 0, away: 0 },
+      selectedOutcome: 'draw',
+      betAmount: 5,
+      initialOdds: { home: 1.88, draw: 3.4, away: 4.7 },
+      attractionWindowUsed: { home: 0, draw: 0, away: 0 },
+      score: null,
+      liveMinute: undefined,
+      status: 'upcoming',
+      returnRate: 0.92,
+    });
+
+    expect(quote).not.toBeNull();
+    expect(quote?.singleSided).toBe(false);
+    expect(quote?.riskLevel).not.toBe('refund_single_side');
+    expect(quote?.odds).not.toBe(3.4);
+  });
+
   it('caps early cold-underdog pricing by attraction-window and solvency rules', () => {
     const engine = new DynamicOddsEngine();
     const quote = engine.calculatePhaseAwareLockedOdds({

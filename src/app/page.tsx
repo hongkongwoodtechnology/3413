@@ -43,7 +43,7 @@ import { PublicKey, Transaction, TransactionInstruction, ComputeBudgetProgram, S
 import { getUSDTBalance, getTrialUSDTBalance, findAta as findAtaClient } from "@/lib/solana"
 import { HOUSE_WALLET, COMMISSION_WALLET, USDT_MINT, USDT_DECIMALS, PLATFORM_FEE_RATE, DEFAULT_COMMISSION_RATE, splitBetAmount, POOL_ADDRESS, formatMissingAtaInitializationMessage, resolvePreferredWalletAddress } from "@/lib/wallets"
 import { getReturnRateForBetMode } from "@/lib/bet-mode"
-import { isSingleSidedMarket } from "@/lib/market-rules"
+import { countActiveOutcomes } from "@/lib/market-rules"
 import { TEAM_NAMES, LEAGUES } from "@/lib/dictionaries"
 
 // --- CATEGORY DEFINITIONS ---
@@ -1724,11 +1724,15 @@ export default function Home() {
                                     away: md.pools.away || 0,
                                 };
                                 projectedPools[selectedOutcome as keyof typeof projectedPools] += betAmountNum;
-                                if (isSingleSidedMarket({
+                                const activeOutcomeCount = countActiveOutcomes({
                                     home: md.pools.home || 0,
                                     draw: md.pools.draw || 0,
                                     away: md.pools.away || 0,
-                                })) {
+                                });
+                                const staysSingleSided =
+                                    activeOutcomeCount === 0 ||
+                                    (activeOutcomeCount === 1 && (md.pools[selectedOutcome as keyof typeof md.pools] || 0) > 0);
+                                if (staysSingleSided) {
                                     matchOdds = { home: md.initialOdds.home, draw: md.initialOdds.draw, away: md.initialOdds.away };
                                 } else {
                                     const result = oddsEngine.calculateAllDisplayOdds(
@@ -1759,11 +1763,15 @@ export default function Home() {
                         } else {
                             const pools = { home: match.pools.home, draw: match.pools.draw, away: match.pools.away };
                             if (isFocused && selectedOutcome) {
-                                if (isSingleSidedMarket({
+                                const activeOutcomeCount = countActiveOutcomes({
                                     home: pools.home || 0,
                                     draw: pools.draw || 0,
                                     away: pools.away || 0,
-                                })) {
+                                });
+                                const staysSingleSided =
+                                    activeOutcomeCount === 0 ||
+                                    (activeOutcomeCount === 1 && (pools[selectedOutcome as keyof typeof pools] || 0) > 0);
+                                if (staysSingleSided) {
                                     matchOdds = { home: 1.01, draw: 1.01, away: 1.01 };
                                 } else {
                                     const projectedPools = { ...pools };
