@@ -43,6 +43,7 @@ import { PublicKey, Transaction, TransactionInstruction, ComputeBudgetProgram, S
 import { getUSDTBalance, getTrialUSDTBalance, findAta as findAtaClient } from "@/lib/solana"
 import { HOUSE_WALLET, COMMISSION_WALLET, USDT_MINT, USDT_DECIMALS, PLATFORM_FEE_RATE, DEFAULT_COMMISSION_RATE, splitBetAmount, POOL_ADDRESS, formatMissingAtaInitializationMessage, resolvePreferredWalletAddress } from "@/lib/wallets"
 import { getReturnRateForBetMode } from "@/lib/bet-mode"
+import { isSingleSidedMarket } from "@/lib/market-rules"
 import { TEAM_NAMES, LEAGUES } from "@/lib/dictionaries"
 
 // --- CATEGORY DEFINITIONS ---
@@ -1723,16 +1724,24 @@ export default function Home() {
                                     away: md.pools.away || 0,
                                 };
                                 projectedPools[selectedOutcome as keyof typeof projectedPools] += betAmountNum;
-                                const result = oddsEngine.calculateAllDisplayOdds(
-                                    projectedPools,
-                                    undefined,
-                                    undefined,
-                                    match.score,
-                                    match.liveMinute,
-                                    match.status,
-                                    effectiveReturnRate
-                                );
-                                matchOdds = { home: result.home, draw: result.draw, away: result.away };
+                                if (isSingleSidedMarket({
+                                    home: md.pools.home || 0,
+                                    draw: md.pools.draw || 0,
+                                    away: md.pools.away || 0,
+                                })) {
+                                    matchOdds = { home: md.initialOdds.home, draw: md.initialOdds.draw, away: md.initialOdds.away };
+                                } else {
+                                    const result = oddsEngine.calculateAllDisplayOdds(
+                                        projectedPools,
+                                        undefined,
+                                        undefined,
+                                        match.score,
+                                        match.liveMinute,
+                                        match.status,
+                                        effectiveReturnRate
+                                    );
+                                    matchOdds = { home: result.home, draw: result.draw, away: result.away };
+                                }
                             } else if (md.realTotalPool === 0) {
                                 matchOdds = { home: md.initialOdds.home, draw: md.initialOdds.draw, away: md.initialOdds.away };
                             } else {
@@ -1750,21 +1759,29 @@ export default function Home() {
                         } else {
                             const pools = { home: match.pools.home, draw: match.pools.draw, away: match.pools.away };
                             if (isFocused && selectedOutcome) {
-                                const projectedPools = { ...pools };
-                                projectedPools[selectedOutcome as keyof typeof projectedPools] += betAmountNum;
-                                const totalReal = pools.home + pools.draw + pools.away;
-                                const result = oddsEngine.calculateAllDisplayOdds(
-                                    projectedPools,
-                                    undefined,
-                                    undefined,
-                                    match.score,
-                                    match.liveMinute,
-                                    match.status,
-                                    effectiveReturnRate,
-                                    totalReal < oddsEngine.getFeeFundedThreshold() || undefined,
-                                    effectiveCommissionRate
-                                );
-                                matchOdds = { home: result.home, draw: result.draw, away: result.away };
+                                if (isSingleSidedMarket({
+                                    home: pools.home || 0,
+                                    draw: pools.draw || 0,
+                                    away: pools.away || 0,
+                                })) {
+                                    matchOdds = { home: 1.01, draw: 1.01, away: 1.01 };
+                                } else {
+                                    const projectedPools = { ...pools };
+                                    projectedPools[selectedOutcome as keyof typeof projectedPools] += betAmountNum;
+                                    const totalReal = pools.home + pools.draw + pools.away;
+                                    const result = oddsEngine.calculateAllDisplayOdds(
+                                        projectedPools,
+                                        undefined,
+                                        undefined,
+                                        match.score,
+                                        match.liveMinute,
+                                        match.status,
+                                        effectiveReturnRate,
+                                        totalReal < oddsEngine.getFeeFundedThreshold() || undefined,
+                                        effectiveCommissionRate
+                                    );
+                                    matchOdds = { home: result.home, draw: result.draw, away: result.away };
+                                }
                             } else {
                                 const result = oddsEngine.calculateAllDisplayOdds(
                                     pools, undefined, undefined, match.score, match.liveMinute, match.status
