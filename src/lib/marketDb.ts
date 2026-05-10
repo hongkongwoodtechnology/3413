@@ -8,6 +8,7 @@ export type MarketDataInfo = {
   liabilities: { home: number; draw: number; away: number };
   pools?: { home: number; draw: number; away: number };
   attractionWindowUsed?: { home: number; draw: number; away: number };
+  initialOdds?: { home: number; draw: number; away: number };
   seedBankroll?: number;
   refundProcessed?: boolean;
   settled?: boolean;

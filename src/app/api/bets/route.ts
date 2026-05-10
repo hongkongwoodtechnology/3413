@@ -7,6 +7,7 @@ import { getNetPayoutFromLockedOdds } from '@/lib/bet-mode';
 import { PLATFORM_FEE_RATE } from '@/lib/wallets';
 import { addToReserve, loadReserve } from '@/lib/reserve';
 import { DynamicOddsEngine } from '@/lib/odds-engine';
+import { countActiveOutcomes, splitBetByAttractionWindow } from '@/lib/market-rules';
 
 // 檔案式資料庫路徑
 const DB_FILE_PATH = path.join(process.cwd(), 'data', 'bets_db.json');
@@ -167,11 +168,13 @@ export async function POST(request: Request) {
         const currentMarket: MarketDataInfo = marketDb[key] || {
             realTotalPool: 0,
             liabilities: { home: 0, draw: 0, away: 0 },
-            pools: { home: 0, draw: 0, away: 0 }
+            pools: { home: 0, draw: 0, away: 0 },
+            attractionWindowUsed: { home: 0, draw: 0, away: 0 },
         };
 
         const currentRealTotal = currentMarket.realTotalPool || 0;
         const currentPools = currentMarket.pools || { home: 0, draw: 0, away: 0 };
+        currentMarket.attractionWindowUsed ||= { home: 0, draw: 0, away: 0 };
         const currentTotalReal = currentPools.home + currentPools.draw + currentPools.away;
         const isFeeFundedCold = currentTotalReal < 0.50;
 
@@ -180,10 +183,17 @@ export async function POST(request: Request) {
             .filter(o => o !== outcomeKey)
             .reduce((sum, o) => sum + (currentPools[o] || 0), 0);
         const isSingleSidePool = currentPools[outcomeKey] > 0 && opponentPoolBefore === 0;
+        const activeOutcomeCount = countActiveOutcomes(currentPools);
+        const isInitialOddsPhase = activeOutcomeCount === 0 || (activeOutcomeCount === 1 && (currentPools[outcomeKey] || 0) > 0);
 
-        if (isSingleSidePool || (lockedOdds >= 0.99 && lockedOdds <= 1.01 && currentTotalReal === 0)) {
-            if (lockedOdds < 0.99) {
-                return NextResponse.json({ error: '賠率異常。' }, { status: 403 });
+        if (isInitialOddsPhase) {
+            const expectedInitialOdds = currentMarket.initialOdds?.[outcomeKey];
+            if (typeof expectedInitialOdds === 'number') {
+                if (Math.abs(lockedOdds - expectedInitialOdds) > 1e-6) {
+                    return NextResponse.json({ error: '單邊首注賠率異常。' }, { status: 403 });
+                }
+            } else if (lockedOdds < 1.01) {
+                return NextResponse.json({ error: '單邊首注賠率異常。' }, { status: 403 });
             }
         } else if (!isFeeFundedCold) {
             if (lockedOdds < 1.01) {
@@ -215,14 +225,14 @@ export async function POST(request: Request) {
         const MAX_POSITION_RATIO = 0.85;
         const COLD_START_CAP = 0.50;
         const isColdStart = currentTotalReal < COLD_START_CAP;
-        if (!isColdStart && newTotalPool > 0 && newOptionConcentration > MAX_POSITION_RATIO && !isSingleSidePool) {
+        if (!isColdStart && newTotalPool > 0 && newOptionConcentration > MAX_POSITION_RATIO && !isInitialOddsPhase) {
             return NextResponse.json(
                 { error: `投注被拒絕：該選項已達到持倉上限 (${(MAX_POSITION_RATIO * 100).toFixed(0)}%)，請等待更多資金注入其他選項。` },
                 { status: 403 }
             );
         }
 
-        if (!isSingleSidePool && currentTotalReal > 0 && !isFeeFundedCold) {
+        if (!isInitialOddsPhase && currentTotalReal > 0 && !isFeeFundedCold) {
             const engine = new DynamicOddsEngine();
             const xMax = engine.getMaxBetAmount(currentPools, outcomeKey);
             if (xMax <= 0) {
@@ -259,6 +269,16 @@ export async function POST(request: Request) {
 
         if (!currentMarket.pools) {
             currentMarket.pools = { home: 0, draw: 0, away: 0 };
+        }
+
+        if (!isInitialOddsPhase) {
+            const split = splitBetByAttractionWindow(
+                amount,
+                currentMarket.attractionWindowUsed,
+                outcomeKey
+            );
+            currentMarket.attractionWindowUsed[outcomeKey] =
+                (currentMarket.attractionWindowUsed[outcomeKey] || 0) + split.attractiveAmount;
         }
 
         currentMarket.realTotalPool = (currentMarket.realTotalPool || 0) + amount;
