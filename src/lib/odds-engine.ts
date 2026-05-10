@@ -1,12 +1,41 @@
 // 香港賽馬會 (HKJC) 足球主客和賠率引擎
-// V7.1: 抽水注入對手盤 + 返佣因素 — Fee-Funded Opponent Pool with Commission
+// V7.2: 抽水先補冷啟動對手盤，剩餘 fee 才做佣金分成
 //   平台不出錢、不蝕錢、只賺抽水
-//   每筆投注的 house portion (8% × (1-commissionRate)) 自動注入對手盤
-//   佣金部分 (8% × commissionRate) 是推薦人支出，不計入對手盤
-//   池 < $0.50 → opponentPool 來自 house portion, odds floor = 1.00
+//   池 < $0.50 → 優先用 fee 補足冷啟動對手盤，剩餘 fee 才能分給平台/介紹人
+//   佣金不再直接影響冷啟動對手盤注入
+//   池 < $0.50 → opponentPool 來自 cold-start support, odds floor = 1.00
 //   池 ≥ $0.50 → 正常運作, odds floor = 1.01
 
+import {
+  ATTRACTION_WINDOW_MAX_ODDS,
+  type AttractionWindowUsage,
+  type OutcomeKey,
+  isSingleSidedMarket,
+  splitBetByAttractionWindow,
+} from './market-rules';
+
 export type RiskLevel = 'normal' | 'counterparty' | 'position_limit' | 'refund_single_side';
+
+export type PhaseAwareQuoteInput = {
+  pools: Record<OutcomeKey, number>;
+  liabilities: Record<OutcomeKey, number>;
+  selectedOutcome: OutcomeKey;
+  betAmount: number;
+  initialOdds: Record<OutcomeKey, number>;
+  attractionWindowUsed: AttractionWindowUsage;
+  score?: string | null;
+  liveMinute?: number;
+  status?: string;
+  returnRate?: number;
+};
+
+export type PhaseAwareQuoteResult = {
+  odds: number;
+  riskLevel: RiskLevel;
+  attractiveAmount: number;
+  regularAmount: number;
+  singleSided: boolean;
+};
 
 const COLD_START_CAP = 0.50;
 const PLATFORM_FEE = 0.08;
@@ -31,8 +60,9 @@ export class DynamicOddsEngine {
     const real = { ...userBets };
     const totalReal = (real.home || 0) + (real.draw || 0) + (real.away || 0);
     const totalFee = totalReal * profitMargin;
-    const commissionPortion = totalFee * commissionRate;
-    const housePortion = totalFee - commissionPortion;
+    const supportNeeded = Math.max(0, COLD_START_CAP - totalReal);
+    const housePortion = Math.min(totalFee, supportNeeded);
+    const commissionPortion = Math.max(0, totalFee - housePortion) * commissionRate;
     const perOpponent = housePortion / 2;
     const entries: Array<{ key: string; val: number }> = [
       { key: 'home', val: real.home || 0 },
@@ -47,9 +77,7 @@ export class DynamicOddsEngine {
 
   public getMinOdds(totalPool: number, isFeeFundedOpponent: boolean, commissionRate = 0.3): number {
     if (isFeeFundedOpponent && totalPool < COLD_START_CAP) {
-      const feeRate = PLATFORM_FEE;
-      const shortfallPerUnit = feeRate * commissionRate;
-      return parseFloat((1.0 + shortfallPerUnit).toFixed(4));
+      return 1.0;
     }
     return 1.01;
   }
@@ -142,10 +170,92 @@ export class DynamicOddsEngine {
 
     const baseOdds = this.calculateParimutuelOdds(effPools, selectedOption, rr, minOdds);
     const finalOdds = Math.min(baseOdds, maxOddsBySolvency);
-    const raw = parseFloat(finalOdds.toFixed(2));
+    const raw = parseFloat(finalOdds.toFixed(4));
     const capped = raw < minOdds ? minOdds : raw;
 
     return { odds: capped, riskLevel: baseOdds > maxOddsBySolvency ? 'counterparty' : 'normal' };
+  }
+
+  public calculatePhaseAwareLockedOdds(input: PhaseAwareQuoteInput): PhaseAwareQuoteResult | null {
+    const rr = input.returnRate ?? this.baseReturnRate;
+
+    if (isSingleSidedMarket(input.pools)) {
+      return {
+        odds: input.initialOdds[input.selectedOutcome] || 1.01,
+        riskLevel: 'refund_single_side',
+        attractiveAmount: 0,
+        regularAmount: 0,
+        singleSided: true,
+      };
+    }
+
+    const split = splitBetByAttractionWindow(
+      input.betAmount,
+      input.attractionWindowUsed,
+      input.selectedOutcome
+    );
+
+    const regularQuote = this.calculateDynamicOdds(
+      input.pools,
+      input.selectedOutcome,
+      input.betAmount,
+      input.liabilities,
+      undefined,
+      undefined,
+      input.initialOdds,
+      input.score,
+      input.liveMinute,
+      input.status,
+      rr
+    );
+
+    if (!regularQuote) return null;
+
+    const attractiveOdds = Math.min(
+      ATTRACTION_WINDOW_MAX_ODDS,
+      regularQuote.odds
+    );
+
+    const weightedOdds =
+      input.betAmount <= 0
+        ? attractiveOdds
+        : (
+            (split.attractiveAmount * attractiveOdds) +
+            (split.regularAmount * regularQuote.odds)
+          ) / input.betAmount;
+
+    return {
+      odds: parseFloat(weightedOdds.toFixed(4)),
+      riskLevel: regularQuote.riskLevel,
+      attractiveAmount: split.attractiveAmount,
+      regularAmount: split.regularAmount,
+      singleSided: false,
+    };
+  }
+
+  public calculatePhaseAwareDisplayOdds(args: {
+    pools: Record<OutcomeKey, number>;
+    initialOdds: Record<OutcomeKey, number>;
+    attractionWindowUsed: AttractionWindowUsage;
+    score?: string | null;
+    liveMinute?: number;
+    status?: string;
+    returnRate?: number;
+  }): Record<OutcomeKey, number> {
+    if (isSingleSidedMarket(args.pools)) {
+      return args.initialOdds;
+    }
+
+    const rr = args.returnRate ?? this.baseReturnRate;
+    return this.calculateAllDisplayOdds(
+      args.pools,
+      undefined,
+      undefined,
+      args.score,
+      args.liveMinute,
+      args.status,
+      rr
+    );
   }
 
   // ─── 集中度 ────────────────────────────────────
@@ -153,6 +263,9 @@ export class DynamicOddsEngine {
   public checkPositionLimit(pools: Record<string, number>, selectedOption: string, betAmount: number): boolean {
     const totalPool = this.sumPools(pools);
     if (totalPool === 0) return true;
+
+    // 總池極小時（< $0.50）跳過持倉限制，讓早期投注者自由建倉
+    if (totalPool < COLD_START_CAP) return true;
 
     const options = ['home', 'draw', 'away'];
     let opponentPool = 0;
@@ -179,6 +292,27 @@ export class DynamicOddsEngine {
 
   public getMaxPositionRatio(): number { return this.MAX_SINGLE_POSITION_RATIO; }
   public getEffectiveK(totalPool: number): number { return this.computeAdaptiveK(totalPool); }
+
+  // ─── Layer 7: 動態注額上限 ──────────────────
+
+  public getMaxBetAmount(
+    pools: Record<string, number>,
+    outcome: string,
+    returnRate: number = this.baseReturnRate
+  ): number {
+    const total = this.sumPools(pools);
+    const optPool = pools[outcome] || 0;
+    if (total === 0) return Number.MAX_SAFE_INTEGER;
+    if (optPool === 0) return Number.MAX_SAFE_INTEGER;
+
+    const minOdds = 1.01;
+    const numerator = minOdds * optPool - total * returnRate;
+    const denominator = returnRate - minOdds;
+    if (denominator >= 0) return Number.MAX_SAFE_INTEGER;
+    const x = numerator / denominator;
+    if (x <= 0) return 0;
+    return parseFloat(x.toFixed(6));
+  }
 
   // ============================================================
   // PRIVATE
@@ -268,10 +402,10 @@ export class DynamicOddsEngine {
     if (totalPool === 0) return minOdds;
     if (optPool === 0) {
       const virtualBet = 0.01;
-      return parseFloat(((totalPool + virtualBet) * returnRate / virtualBet).toFixed(2));
+      return parseFloat(((totalPool + virtualBet) * returnRate / virtualBet).toFixed(4));
     }
     const raw = (totalPool * returnRate) / optPool;
-    const v = parseFloat(raw.toFixed(2));
+    const v = parseFloat(raw.toFixed(4));
     return v < minOdds ? minOdds : v;
   }
 
@@ -282,7 +416,7 @@ export class DynamicOddsEngine {
     const safeMax = (totalPool * returnRate) / optPool;
     const prior = initialProbs[option];
     if (!prior) {
-      const raw = parseFloat(safeMax.toFixed(2));
+      const raw = parseFloat(safeMax.toFixed(4));
       return raw < minOdds ? minOdds : raw;
     }
     const marketProb = optPool / totalPool;
@@ -291,7 +425,7 @@ export class DynamicOddsEngine {
     const overround = 1 / returnRate;
     const blendedOdds = 1 / (blendedProb * overround);
     const final = Math.min(blendedOdds, safeMax);
-    const raw = parseFloat(final.toFixed(2));
+    const raw = parseFloat(final.toFixed(4));
     return raw < minOdds ? minOdds : raw;
   }
 
