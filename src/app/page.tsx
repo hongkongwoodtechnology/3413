@@ -20,6 +20,7 @@ type Match = BaseMatch & {
     realTotalPool: number
     liabilities: { home: number, draw: number, away: number }
     pools: { home: number, draw: number, away: number }
+    attractionWindowUsed?: { home: number, draw: number, away: number }
     seedPools?: { home: number, draw: number, away: number }
     initialOdds: { home: number, draw: number, away: number }
     initialProbs?: { home: number, draw: number, away: number }
@@ -40,7 +41,7 @@ const NewsCenterPage = dynamic(() => import("@/components/NewsCenterPage").then(
 import { Suspense } from "react"
 import { PublicKey, Transaction, TransactionInstruction, ComputeBudgetProgram, SystemProgram } from "@solana/web3.js"
 import { getUSDTBalance, getTrialUSDTBalance, findAta as findAtaClient } from "@/lib/solana"
-import { HOUSE_WALLET, COMMISSION_WALLET, USDT_MINT, USDT_DECIMALS, PLATFORM_FEE_RATE, DEFAULT_COMMISSION_RATE, splitBetAmount, POOL_ADDRESS, formatMissingAtaInitializationMessage } from "@/lib/wallets"
+import { HOUSE_WALLET, COMMISSION_WALLET, USDT_MINT, USDT_DECIMALS, PLATFORM_FEE_RATE, DEFAULT_COMMISSION_RATE, splitBetAmount, POOL_ADDRESS, formatMissingAtaInitializationMessage, resolvePreferredWalletAddress } from "@/lib/wallets"
 import { getReturnRateForBetMode } from "@/lib/bet-mode"
 import { TEAM_NAMES, LEAGUES } from "@/lib/dictionaries"
 
@@ -395,17 +396,15 @@ export default function Home() {
   // Helper to get actual address for Phantom multi-account edge case
   const getActualAddress = () => {
     if (!publicKey) return null;
-    let address = publicKey.toBase58();
+    const walletAdapterAddress = publicKey.toBase58();
     if (typeof window !== 'undefined') {
         const provider = (window as any)?.solana;
         if (provider && provider.isPhantom && provider.publicKey) {
             const phantomAddress = provider.publicKey.toBase58();
-            if (phantomAddress !== address) {
-                return phantomAddress;
-            }
+            return resolvePreferredWalletAddress(walletAdapterAddress, phantomAddress);
         }
     }
-    return address;
+    return resolvePreferredWalletAddress(walletAdapterAddress, null);
   };
 
   // --- BETS FETCHING ---
@@ -850,18 +849,24 @@ export default function Home() {
     }
 
     const md = currentMatch.marketData;
+    const attractionWindowUsed = md.attractionWindowUsed || {
+      home: 0,
+      draw: 0,
+      away: 0,
+    };
     if (md.realTotalPool === 0) {
         return md.initialOdds;
     }
-    return oddsEngine.calculateAllDisplayOdds(
-        md.pools,
-        undefined,
-        undefined,
-        currentMatch.score,
-        currentMatch.liveMinute,
-        currentMatch.status
-    );
-  }, [currentMatch, oddsEngine])
+    return oddsEngine.calculatePhaseAwareDisplayOdds({
+        pools: md.pools,
+        initialOdds: md.initialOdds,
+        attractionWindowUsed,
+        score: currentMatch.score,
+        liveMinute: currentMatch.liveMinute,
+        status: currentMatch.status,
+        returnRate: effectiveReturnRate,
+    });
+  }, [currentMatch, oddsEngine, effectiveReturnRate])
 
   // Calculate counts for sidebar badges and organize leagues
   const { categoryCounts, leaguesByCategory, leagueCounts } = useMemo(() => {
@@ -940,22 +945,24 @@ export default function Home() {
       }
 
       const md = currentMatch.marketData;
-      const totalReal = md.realTotalPool;
-      return oddsEngine.calculateDynamicOdds(
-          md.pools,
+      const attractionWindowUsed = md.attractionWindowUsed || {
+        home: 0,
+        draw: 0,
+        away: 0,
+      };
+      const quote = oddsEngine.calculatePhaseAwareLockedOdds({
+          pools: md.pools,
+          liabilities: md.liabilities,
           selectedOutcome,
-          betAmountNum,
-          md.liabilities,
-          undefined,
-          undefined,
-          undefined,
-          currentMatch.score,
-          currentMatch.liveMinute,
-          currentMatch.status,
-          effectiveReturnRate,
-          totalReal < oddsEngine.getFeeFundedThreshold() || undefined,
-          effectiveCommissionRate
-      );
+          betAmount: betAmountNum,
+          initialOdds: md.initialOdds,
+          attractionWindowUsed,
+          score: currentMatch.score,
+          liveMinute: currentMatch.liveMinute,
+          status: currentMatch.status,
+          returnRate: effectiveReturnRate,
+      });
+      return quote ? { odds: quote.odds, riskLevel: quote.riskLevel } : null;
   }, [currentMatch, selectedOutcome, betAmountNum, oddsEngine, effectiveCommissionRate, effectiveReturnRate]);
 
   const selectedOdds = projectedOdds ? projectedOdds.odds : (selectedOutcome ? currentOdds[selectedOutcome as keyof typeof currentOdds] : 0)
@@ -1038,7 +1045,7 @@ export default function Home() {
       // 1. 如果是真實資金投注，發送 USDT SPL Token 轉帳到資金池 + 抽水 + 佣金地址
       if (!useBonus) {
         // 查看是否有推薦人，決定佣金分成
-        const currentAddressForReferral = publicKey?.toBase58() || getActualAddress();
+        const currentAddressForReferral = getActualAddress();
         let commissionRate = 0;
         if (currentAddressForReferral) {
           const storedReferrer = localStorage.getItem(`bound_referrer_${currentAddressForReferral}`);
@@ -1254,7 +1261,7 @@ export default function Home() {
           setMyBets(prev => [newBet, ...prev]);
 
           // 取得目前有效的帳號 (防錯處理)
-          const currentAddress = publicKey?.toBase58() || getActualAddress();
+          const currentAddress = getActualAddress();
           if (!currentAddress) {
               console.error("Cannot determine wallet address for recording bet.");
               return;
@@ -1709,6 +1716,11 @@ export default function Home() {
 
                         if (match.marketData) {
                             const md = match.marketData;
+                            const attractionWindowUsed = md.attractionWindowUsed || {
+                                home: 0,
+                                draw: 0,
+                                away: 0,
+                            };
                             if (isFocused && selectedOutcome) {
                                 const projectedPools = {
                                     home: md.pools.home || 0,
@@ -1716,22 +1728,28 @@ export default function Home() {
                                     away: md.pools.away || 0,
                                 };
                                 projectedPools[selectedOutcome as keyof typeof projectedPools] += betAmountNum;
-                                const isFeeFunded = md.realTotalPool < oddsEngine.getFeeFundedThreshold();
-                                const result = oddsEngine.calculateAllDisplayOdds(
-                                    projectedPools, undefined, undefined,
-                                    match.score, match.liveMinute, match.status,
-                                    effectiveReturnRate,
-                                    isFeeFunded || undefined,
-                                    effectiveCommissionRate
-                                );
+                                const result = oddsEngine.calculatePhaseAwareDisplayOdds({
+                                    pools: projectedPools,
+                                    initialOdds: md.initialOdds,
+                                    attractionWindowUsed,
+                                    score: match.score,
+                                    liveMinute: match.liveMinute,
+                                    status: match.status,
+                                    returnRate: effectiveReturnRate,
+                                });
                                 matchOdds = { home: result.home, draw: result.draw, away: result.away };
                             } else if (md.realTotalPool === 0) {
                                 matchOdds = { home: md.initialOdds.home, draw: md.initialOdds.draw, away: md.initialOdds.away };
                             } else {
-                                const result = oddsEngine.calculateAllDisplayOdds(
-                                    md.pools, undefined, undefined,
-                                    match.score, match.liveMinute, match.status
-                                );
+                                const result = oddsEngine.calculatePhaseAwareDisplayOdds({
+                                    pools: md.pools,
+                                    initialOdds: md.initialOdds,
+                                    attractionWindowUsed,
+                                    score: match.score,
+                                    liveMinute: match.liveMinute,
+                                    status: match.status,
+                                    returnRate: effectiveReturnRate,
+                                });
                                 matchOdds = { home: result.home, draw: result.draw, away: result.away };
                             }
                         } else {

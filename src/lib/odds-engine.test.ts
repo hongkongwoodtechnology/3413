@@ -38,4 +38,20 @@ describe('phase-aware odds engine', () => {
     expect(quote?.odds).toBeLessThanOrEqual(15);
     expect(quote?.odds).toBeGreaterThan(1.01);
   });
+
+  it('returns initial odds for display during single-sided phase', () => {
+    const engine = new DynamicOddsEngine();
+
+    expect(
+      engine.calculatePhaseAwareDisplayOdds({
+        pools: { home: 12, draw: 0, away: 0 },
+        initialOdds: { home: 1.91, draw: 3.2, away: 4.4 },
+        attractionWindowUsed: { home: 0, draw: 0, away: 0 },
+        score: '0-2',
+        liveMinute: 75,
+        status: 'live',
+        returnRate: 0.92,
+      })
+    ).toEqual({ home: 1.91, draw: 3.2, away: 4.4 });
+  });
 });
