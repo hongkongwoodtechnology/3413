@@ -116,6 +116,32 @@ describe('bets POST', () => {
     expect(json.data.odds).toBe(1.88);
   });
 
+  it('locks the same initial odds for trial-funds first bets in a single-sided market', async () => {
+    const req = new Request('http://localhost/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: 'single-side-trial-user',
+        matchId: 202,
+        matchName: 'Single vs Side',
+        outcome: 'home',
+        amount: 5,
+        odds: 1.88,
+        useBonus: true,
+        timestamp: 12345678915,
+        liveMinute: 12,
+      }),
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.data.useBonus).toBe(true);
+    expect(json.data.odds).toBe(1.88);
+    expect(json.data.netPayout).toBe(9.4);
+  });
+
   it('persists attraction-window usage for early cold underdog bets', async () => {
     const req = new Request('http://localhost/api/bets', {
       method: 'POST',
