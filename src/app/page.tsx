@@ -11,6 +11,10 @@ import { Trophy, TrendingUp, ShieldCheck, Clock, Search, Filter, AlertTriangle, 
 import { DynamicOddsEngine, type RiskLevel } from "@/lib/odds-engine"
 import { LiquidityAnalyzer } from "@/lib/analytics"
 import { fetchLiveMatches } from "@/lib/api"
+import {
+  shouldShowMatchesLoading,
+  shouldStartMatchesLoading,
+} from "@/lib/live-matches-loading"
 import { Match as BaseMatch } from "@/lib/types"
 import Link from "next/link"
 
@@ -575,7 +579,7 @@ export default function Home() {
               console.error("Failed to load matches", error);
           }
       } finally {
-          if (!canSetState || canSetState()) {
+          if (isInitial && (!canSetState || canSetState())) {
               setIsLoading(false);
           }
       }
@@ -639,7 +643,8 @@ export default function Home() {
     let requestSeq = 0;
     const startFetch = async () => {
         const seq = ++requestSeq;
-        return loadMatches(language, matches.length === 0, () => isMounted && seq === requestSeq);
+        const isInitialFetch = shouldStartMatchesLoading(matches.length);
+        return loadMatches(language, isInitialFetch, () => isMounted && seq === requestSeq);
     };
 
     void startFetch();
@@ -745,6 +750,7 @@ export default function Home() {
 
   // Derived state for the currently selected match
   const currentMatch = matches.find(m => m.id === selectedMatchId)
+  const showMatchesLoading = shouldShowMatchesLoading(isLoading, matches.length)
 
   const visibleMatches = useMemo(() => {
     return matches.filter(m => m.status !== 'finished');
@@ -1678,7 +1684,7 @@ export default function Home() {
 
           {/* Match Grid */}
           <div className="space-y-6 mt-2 pt-4">
-            {isLoading ? (
+            {showMatchesLoading ? (
                 <div className="col-span-full text-center py-32 text-neutral-500 animate-pulse">
                     <div className="h-12 w-12 mx-auto mb-4 rounded-full border-4 border-primary-purple/30 border-t-primary-purple animate-spin" />
                     <p className="text-lg font-medium text-neutral-400">{t('status.loading')}</p>
