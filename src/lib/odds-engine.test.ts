@@ -54,4 +54,22 @@ describe('phase-aware odds engine', () => {
       })
     ).toEqual({ home: 1.91, draw: 3.2, away: 4.4 });
   });
+
+  it('weights a partially eligible cold-underdog order into one locked odds value', () => {
+    const engine = new DynamicOddsEngine();
+    const quote = engine.calculatePhaseAwareLockedOdds({
+      pools: { home: 100, draw: 50, away: 0 },
+      liabilities: { home: 0, draw: 0, away: 0 },
+      selectedOutcome: 'away',
+      betAmount: 12,
+      initialOdds: { home: 1.88, draw: 3.4, away: 4.7 },
+      attractionWindowUsed: { home: 0, draw: 0, away: 8 },
+      status: 'upcoming',
+      returnRate: 0.92,
+    });
+
+    expect(quote?.attractiveAmount).toBe(2);
+    expect(quote?.regularAmount).toBe(10);
+    expect(quote?.odds).toBeLessThanOrEqual(15);
+  });
 });

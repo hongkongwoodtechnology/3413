@@ -148,4 +148,49 @@ describe('bets POST', () => {
 
     expect(savedMarketDb['101'].attractionWindowUsed.away).toBe(5);
   });
+
+  it('does not reset attraction-window pricing by splitting small orders', async () => {
+    const requestA = new Request('http://localhost/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: 'trial-user',
+        matchId: 101,
+        matchName: 'A vs B',
+        outcome: 'away',
+        amount: 8,
+        odds: 15,
+        useBonus: false,
+        timestamp: 1234567893,
+      }),
+    });
+
+    await POST(requestA);
+
+    const requestB = new Request('http://localhost/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: 'trial-user',
+        matchId: 101,
+        matchName: 'A vs B',
+        outcome: 'away',
+        amount: 4,
+        odds: 12,
+        useBonus: false,
+        timestamp: 1234567894,
+      }),
+    });
+
+    await POST(requestB);
+
+    const writeCalls = (fs.writeFileSync as jest.Mock).mock.calls;
+    const marketWrites = writeCalls.filter(([filePath]) =>
+      String(filePath).includes('market_db.json')
+    );
+    const lastMarketWrite = marketWrites[marketWrites.length - 1];
+    const savedMarketDb = JSON.parse(String(lastMarketWrite?.[1] || '{}'));
+
+    expect(savedMarketDb['101'].attractionWindowUsed.away).toBe(10);
+  });
 });
