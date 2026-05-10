@@ -3,8 +3,10 @@ import fs from 'fs';
 import path from 'path';
 import { triggerAutoBackup } from '@/lib/gdriveBackup';
 import { loadMarketDb, saveMarketDb, MarketDataInfo } from '@/lib/marketDb';
+import { getNetPayoutFromLockedOdds } from '@/lib/bet-mode';
 import { PLATFORM_FEE_RATE } from '@/lib/wallets';
 import { addToReserve, loadReserve } from '@/lib/reserve';
+import { DynamicOddsEngine } from '@/lib/odds-engine';
 
 // 檔案式資料庫路徑
 const DB_FILE_PATH = path.join(process.cwd(), 'data', 'bets_db.json');
@@ -17,10 +19,13 @@ type BetRecord = {
   outcome: 'home' | 'draw' | 'away';
   amount: number;
   odds?: number;
+  netPayout?: number;
   signature?: string | null;
   status?: string; // 'pending', 'win', 'loss', 'refunded'
   useBonus: boolean;
   timestamp: number;
+  archived?: boolean;
+  paidOut?: boolean;
 };
 
 // 讀取檔案資料庫
@@ -102,6 +107,9 @@ export async function GET(request: Request) {
                             console.log(`[BetsAPI Refund] Refunded bet ${bet.id} (only 1 outcome bet) match ${bet.matchId}`);
                         }
                     }
+                    if (!bet.status) {
+                        bet.status = 'pending';
+                    }
                 }
             }
         }
@@ -152,6 +160,7 @@ export async function POST(request: Request) {
         }
 
         const lockedOdds = odds || 1.0;
+        const netPayout = getNetPayoutFromLockedOdds(amount, lockedOdds, !!useBonus);
 
         const marketDb = loadMarketDb();
         const key = String(matchId);
@@ -204,11 +213,30 @@ export async function POST(request: Request) {
         const newTotalPool = currentTotalReal + amount;
         const newOptionConcentration = (currentOptionPool + amount) / (newTotalPool || 1);
         const MAX_POSITION_RATIO = 0.85;
-        if (newTotalPool > 0 && newOptionConcentration > MAX_POSITION_RATIO && !isSingleSidePool) {
+        const COLD_START_CAP = 0.50;
+        const isColdStart = currentTotalReal < COLD_START_CAP;
+        if (!isColdStart && newTotalPool > 0 && newOptionConcentration > MAX_POSITION_RATIO && !isSingleSidePool) {
             return NextResponse.json(
                 { error: `投注被拒絕：該選項已達到持倉上限 (${(MAX_POSITION_RATIO * 100).toFixed(0)}%)，請等待更多資金注入其他選項。` },
                 { status: 403 }
             );
+        }
+
+        if (!isSingleSidePool && currentTotalReal > 0 && !isFeeFundedCold) {
+            const engine = new DynamicOddsEngine();
+            const xMax = engine.getMaxBetAmount(currentPools, outcomeKey);
+            if (xMax <= 0) {
+                return NextResponse.json(
+                    { error: '投注被拒絕：該選項資金池已達賠付上限，請選擇其他選項。' },
+                    { status: 403 }
+                );
+            }
+            if (amount > xMax) {
+                return NextResponse.json(
+                    { error: `投注金額超出上限，此選項最大可投注 ${xMax.toFixed(4)} USDT（超過將使賠率低於 1.01）。` },
+                    { status: 403 }
+                );
+            }
         }
 
         const newBet: BetRecord = {
@@ -219,6 +247,7 @@ export async function POST(request: Request) {
             outcome,
             amount,
             odds: lockedOdds,
+            netPayout,
             signature: typeof signature === 'string' ? signature : null,
             status: 'pending',
             useBonus: !!useBonus,
