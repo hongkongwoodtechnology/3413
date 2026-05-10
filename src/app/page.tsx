@@ -26,20 +26,22 @@ type Match = BaseMatch & {
   }
 }
 import { useLanguage } from "@/components/LanguageProvider"
-import { LanguageSwitcher } from "@/components/LanguageSwitcher"
-import { ReferralModal } from "@/components/ReferralModal"
-import { ReferralHandler } from "@/components/ReferralHandler"
-import { ReferralLandingPage } from "@/components/ReferralLandingPage"
+import dynamic from "next/dynamic"
+
+const LanguageSwitcher = dynamic(() => import("@/components/LanguageSwitcher").then(m => ({ default: m.LanguageSwitcher })), { ssr: false })
+const ReferralModal = dynamic(() => import("@/components/ReferralModal").then(m => ({ default: m.ReferralModal })))
+const ReferralHandler = dynamic(() => import("@/components/ReferralHandler").then(m => ({ default: m.ReferralHandler })))
+const ReferralLandingPage = dynamic(() => import("@/components/ReferralLandingPage").then(m => ({ default: m.ReferralLandingPage })))
+const AdminDashboard = dynamic(() => import("@/components/admin/AdminDashboard").then(m => ({ default: m.AdminDashboard })))
+const BonusEventPage = dynamic(() => import("@/components/BonusEventPage").then(m => ({ default: m.BonusEventPage })))
+const NewsSection = dynamic(() => import("@/components/NewsSection").then(m => ({ default: m.NewsSection })), { ssr: true })
+const NewsDetailPage = dynamic(() => import("@/components/NewsDetailPage").then(m => ({ default: m.NewsDetailPage })))
+const NewsCenterPage = dynamic(() => import("@/components/NewsCenterPage").then(m => ({ default: m.NewsCenterPage })))
 import { Suspense } from "react"
 import { PublicKey, Transaction, TransactionInstruction, ComputeBudgetProgram, SystemProgram } from "@solana/web3.js"
 import { getUSDTBalance, getTrialUSDTBalance, findAta as findAtaClient } from "@/lib/solana"
-import { HOUSE_WALLET, COMMISSION_WALLET, USDT_MINT, USDT_DECIMALS, PLATFORM_FEE_RATE, DEFAULT_COMMISSION_RATE, splitBetAmount } from "@/lib/wallets"
-import { AdminDashboard } from "@/components/admin/AdminDashboard"
-import { BonusEventPage } from "@/components/BonusEventPage"
-import { NewsSection } from "@/components/NewsSection"
-import { NewsDetailPage } from "@/components/NewsDetailPage"
-import { NewsCenterPage } from "@/components/NewsCenterPage"
-
+import { HOUSE_WALLET, COMMISSION_WALLET, USDT_MINT, USDT_DECIMALS, PLATFORM_FEE_RATE, DEFAULT_COMMISSION_RATE, splitBetAmount, POOL_ADDRESS, formatMissingAtaInitializationMessage } from "@/lib/wallets"
+import { getReturnRateForBetMode } from "@/lib/bet-mode"
 import { TEAM_NAMES, LEAGUES } from "@/lib/dictionaries"
 
 // --- CATEGORY DEFINITIONS ---
@@ -184,7 +186,53 @@ async function fetchBlockhash(): Promise<string> {
   }
 }
 
-async function checkAtaExistsViaProxy(ata: PublicKey): Promise<boolean> {
+async function checkAtaExistsDirect(ata: PublicKey): Promise<boolean | null> {
+  const body = JSON.stringify({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "getAccountInfo",
+    params: [ata.toBase58(), { commitment: "confirmed", encoding: "base64" }],
+  });
+  const controllers: AbortController[] = [];
+  const race = Promise.race(
+    BLOCKHASH_RPCS.map((url) => {
+      const ctrl = new AbortController();
+      controllers.push(ctrl);
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      return fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+        signal: ctrl.signal,
+      })
+        .then(async (res) => {
+          clearTimeout(timer);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const raw = await res.json();
+          const dataArr = raw?.result?.value?.data;
+          if (!dataArr) return false;
+          const base64Str = Array.isArray(dataArr) ? dataArr[0] : dataArr;
+          if (!base64Str || typeof base64Str !== "string") return false;
+          const bytes = Buffer.from(base64Str, "base64");
+          return bytes.length >= 72;
+        })
+        .catch((err) => {
+          clearTimeout(timer);
+          throw err;
+        });
+    })
+  );
+  try {
+    const result = await race;
+    return result;
+  } catch {
+    return null;
+  } finally {
+    controllers.forEach((c) => c.abort());
+  }
+}
+
+async function checkAtaExistsViaProxy(ata: PublicKey): Promise<boolean | null> {
   try {
     const body = JSON.stringify({
       jsonrpc: "2.0",
@@ -197,30 +245,38 @@ async function checkAtaExistsViaProxy(ata: PublicKey): Promise<boolean> {
       headers: { "Content-Type": "application/json" },
       body,
     });
-    if (!res.ok) return false;
+    if (!res.ok) return null;
     const raw = await res.json();
     const dataArr = raw?.result?.value?.data;
-    if (!dataArr) return false;
+    if (!dataArr) {
+      if (raw?.result?.value === null) return false;
+      return null;
+    }
     const base64Str = Array.isArray(dataArr) ? dataArr[0] : dataArr;
-    if (!base64Str || typeof base64Str !== "string") return false;
+    if (!base64Str || typeof base64Str !== "string") return null;
     const bytes = Buffer.from(base64Str, "base64");
     return bytes.length >= 72;
   } catch {
-    return false;
+    return null;
   }
 }
 
+async function checkAtaExists(ata: PublicKey): Promise<boolean | null> {
+  const directResult = await checkAtaExistsDirect(ata);
+  if (directResult !== null) return directResult;
+  return checkAtaExistsViaProxy(ata);
+}
+
 async function checkAtasNeeded(
-  atas: { ata: PublicKey; owner: PublicKey }[]
-): Promise<{ ata: PublicKey; owner: PublicKey }[]> {
-  const needed: { ata: PublicKey; owner: PublicKey }[] = [];
-  for (const { ata, owner } of atas) {
-    try {
-      if (!(await checkAtaExistsViaProxy(ata))) {
-        needed.push({ ata, owner });
-      }
-    } catch {
-      needed.push({ ata, owner });
+  atas: { ata: PublicKey; owner: PublicKey; label: string }[]
+): Promise<{ ata: PublicKey; owner: PublicKey; label: string; unknown: boolean }[]> {
+  const needed: { ata: PublicKey; owner: PublicKey; label: string; unknown: boolean }[] = [];
+  for (const { ata, owner, label } of atas) {
+    const exists = await checkAtaExists(ata);
+    if (exists === null) {
+      needed.push({ ata, owner, label, unknown: true });
+    } else if (!exists) {
+      needed.push({ ata, owner, label, unknown: false });
     }
   }
   return needed;
@@ -276,12 +332,17 @@ export default function Home() {
   const [balance, setBalance] = useState<number>(0)
   const [trialBalance, setTrialBalance] = useState<number>(0)
   const [currentView, setCurrentView] = useState<'matches' | 'bonus_event' | 'news_detail' | 'news_center'>('matches')
-  const [counterpartyOffer, setCounterpartyOffer] = useState<{ odds: number } | null>(null)
-  
   // State for dynamic pools
   const [matches, setMatches] = useState<Match[]>(INITIAL_MATCHES)
+  const matchesFingerprintRef = useRef<string>('')
+  const mountedRef = useRef(true)
   const [myBets, setMyBets] = useState<BetRecord[]>([])
   const [dateFilter, setDateFilter] = useState<'today' | '3days' | '7days' | '30days' | '3months'>('3months')
+  const [currentBetPage, setCurrentBetPage] = useState(0)
+  const [timeFilter, setTimeFilter] = useState<'live' | '1day' | '3days' | '7days' | 'all'>('all')
+  const [currentMatchPage, setCurrentMatchPage] = useState(0)
+  const MATCHES_PER_PAGE = 8
+  const [betsRefreshKey, setBetsRefreshKey] = useState(0)
 
   // 檢查是否使用體驗金投注
   const [useBonus, setUseBonus] = useState(false);
@@ -297,11 +358,20 @@ export default function Home() {
     return useBonus ? 0 : userCommissionRate;
   }, [useBonus, userCommissionRate]);
 
+  const effectiveReturnRate = useMemo(() => {
+    return getReturnRateForBetMode(useBonus);
+  }, [useBonus]);
+
   // Referral Landing Page State
   const [showReferralLanding, setShowReferralLanding] = useState(false);
   const [urlReferrer, setUrlReferrer] = useState<string | null>(null);
 
   // Parse URL for 'ref' parameter on mount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -363,7 +433,7 @@ export default function Home() {
     };
     
     fetchBets();
-  }, [connected, publicKey]);
+  }, [connected, publicKey, betsRefreshKey]);
 
   // 用戶返佣率：錢包連接後從 localStorage 讀取推薦人資訊
   useEffect(() => {
@@ -438,6 +508,27 @@ export default function Home() {
 
 
   // --- REAL DATA FETCHING ---
+  function computeFingerprint(list: Match[]): string {
+    const parts: string[] = [];
+    for (const m of list) {
+      parts.push(`${m.id}:${m.status}:${m.score ?? '-'}:${m.liveMinute ?? 0}:${m.home}:${m.away}`);
+      if (m.marketData) {
+        parts.push(`${m.marketData.realTotalPool}:${m.marketData.liabilities.home}:${m.marketData.liabilities.draw}:${m.marketData.liabilities.away}`);
+      }
+    }
+    return parts.join('|');
+  }
+
+  function setMatchesIfChanged(next: Match[] | ((prev: Match[]) => Match[])) {
+    setMatches(prev => {
+      const resolved = typeof next === 'function' ? next(prev) : next;
+      const fp = computeFingerprint(resolved);
+      if (fp === matchesFingerprintRef.current) return prev;
+      matchesFingerprintRef.current = fp;
+      return resolved;
+    });
+  }
+
   const loadMatches = async (
     currentLang: string,
     isInitial: boolean = false,
@@ -452,9 +543,24 @@ export default function Home() {
           const data = await fetchLiveMatches(currentLang);
           if (!canSetState || canSetState()) {
               if (data.length > 0) {
-                  setMatches(data);
-              } else {
-                  setMatches([]);
+                  setMatchesIfChanged(prev => {
+                      if (prev.length === 0) return data;
+                      const dataMap = new Map(data.map((m: Match) => [String(m.id), m]));
+                      const merged: Match[] = [];
+                      for (const pm of prev) {
+                          const fresh = dataMap.get(String(pm.id));
+                          if (!fresh) { merged.push(pm); continue; }
+                          dataMap.delete(String(pm.id));
+                          if (pm.marketData && fresh.marketData &&
+                              pm.marketData.realTotalPool > fresh.marketData.realTotalPool) {
+                              merged.push({ ...fresh, marketData: pm.marketData, pools: pm.pools });
+                          } else {
+                              merged.push(fresh);
+                          }
+                      }
+                      for (const [, m] of dataMap) { merged.push(m); }
+                      return merged;
+                  });
               }
           }
       } catch (error) {
@@ -480,7 +586,7 @@ export default function Home() {
 
     // Instant optimistic translation of existing matches!
     if (matches.length > 0) {
-        setMatches(prevMatches => prevMatches.map(m => {
+        setMatchesIfChanged(prevMatches => prevMatches.map(m => {
             const newMatch = { ...m };
             
             // Translate Teams
@@ -541,6 +647,9 @@ export default function Home() {
     // Poll every 15 seconds for live scores
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     let inFlight = false;
+    let inFlightSince = 0;
+    const MAX_INFLIGHT_MS = 30000;
+    let consecutiveFailures = 0;
     const pollMs = 15000;
     const canPoll = () => (typeof document === 'undefined' ? true : document.visibilityState === 'visible');
     const onVisibilityChange = () => {
@@ -559,16 +668,46 @@ export default function Home() {
             return;
         }
         if (inFlight) {
-            timeoutId = setTimeout(poll, pollMs);
-            return;
+            if (Date.now() - inFlightSince > MAX_INFLIGHT_MS) {
+                inFlight = false;
+                inFlightSince = 0;
+            } else {
+                timeoutId = setTimeout(poll, pollMs);
+                return;
+            }
         }
 
         inFlight = true;
+        inFlightSince = Date.now();
         try {
             const seq = ++requestSeq;
             const data = await fetchLiveMatches(language);
             if (isMounted && seq === requestSeq && data.length > 0) {
-                setMatches(data);
+                consecutiveFailures = 0;
+                setMatchesIfChanged(prev => {
+                    const dataMap = new Map(data.map((m: Match) => [String(m.id), m]));
+                    const merged: Match[] = [];
+                    const prevIds = new Set(prev.map((m: Match) => String(m.id)));
+                    // Keep locally-updated matches whose pools exceed the API version
+                    for (const pm of prev) {
+                        const fresh = dataMap.get(String(pm.id));
+                        if (!fresh) { merged.push(pm); continue; }
+                        dataMap.delete(String(pm.id));
+                        if (pm.marketData && fresh.marketData &&
+                            pm.marketData.realTotalPool > fresh.marketData.realTotalPool) {
+                            merged.push({ ...fresh, marketData: pm.marketData, pools: pm.pools });
+                        } else {
+                            merged.push(fresh);
+                        }
+                    }
+                    // Add new matches not in previous state
+                    for (const [, m] of dataMap) {
+                        merged.push(m);
+                    }
+                    return merged;
+                });
+            } else if (isMounted && seq === requestSeq) {
+                consecutiveFailures++;
             }
         } catch (e) {
             const err: any = e;
@@ -581,10 +720,14 @@ export default function Home() {
             if (!isAbort) {
                 console.error("Background fetch failed", e);
             }
+            consecutiveFailures++;
         } finally {
             inFlight = false;
+            inFlightSince = 0;
             if (isMounted) {
-                timeoutId = setTimeout(poll, pollMs);
+                const backoff = Math.min(consecutiveFailures, 4) * pollMs;
+                const nextPoll = pollMs + backoff;
+                timeoutId = setTimeout(poll, nextPoll);
             }
         }
     };
@@ -607,15 +750,26 @@ export default function Home() {
     return matches.filter(m => m.status !== 'finished');
   }, [matches]);
 
-  // Filter matches based on category, league, and search
+  // Filter matches based on category, league, search, and time
   const filteredMatches = useMemo(() => {
+    const now = Date.now();
     const filtered = visibleMatches.filter(match => {
       const matchesCategory = activeCategory === 'all' || match.category === activeCategory;
       const matchesLeague = !activeLeague || match.league === activeLeague;
       const matchesSearch = match.home.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             match.away.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             match.league.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesLeague && matchesSearch;
+      let matchesTime = true;
+      if (timeFilter === 'live') {
+        matchesTime = match.status === 'live';
+      } else if (timeFilter === '1day') {
+        matchesTime = (match.timestamp || 0) >= now - 24 * 60 * 60 * 1000;
+      } else if (timeFilter === '3days') {
+        matchesTime = (match.timestamp || 0) >= now - 3 * 24 * 60 * 60 * 1000;
+      } else if (timeFilter === '7days') {
+        matchesTime = (match.timestamp || 0) >= now - 7 * 24 * 60 * 60 * 1000;
+      }
+      return matchesCategory && matchesLeague && matchesSearch && matchesTime;
     });
 
     return filtered.sort((a, b) => {
@@ -629,7 +783,7 @@ export default function Home() {
         
         return t1 - t2;
     });
-  }, [visibleMatches, activeCategory, activeLeague, searchQuery]);
+  }, [visibleMatches, activeCategory, activeLeague, searchQuery, timeFilter]);
 
   // Group matches by league for display
   const groupedMatches = useMemo(() => {
@@ -657,38 +811,56 @@ export default function Home() {
     return groups;
   }, [filteredMatches, activeCategory, activeLeague]);
 
+  // Paginate grouped matches
+  const totalMatchPages = Math.max(1, Math.ceil(filteredMatches.length / MATCHES_PER_PAGE));
+  const paginatedGroupedMatches = useMemo(() => {
+    if (filteredMatches.length <= MATCHES_PER_PAGE) return groupedMatches;
+    const start = currentMatchPage * MATCHES_PER_PAGE;
+    const end = start + MATCHES_PER_PAGE;
+    const pageMatchIds = new Set(filteredMatches.slice(start, end).map(m => m.id));
+    return groupedMatches
+      .map(group => ({
+        ...group,
+        matches: group.matches.filter(m => pageMatchIds.has(m.id))
+      }))
+      .filter(group => group.matches.length > 0);
+  }, [groupedMatches, filteredMatches, currentMatchPage, MATCHES_PER_PAGE]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentMatchPage(0);
+  }, [activeCategory, activeLeague, searchQuery, timeFilter]);
+
   // Calculate Odds dynamically based on current pools
   const currentOdds = useMemo(() => {
     if (!currentMatch) return { home: 0, draw: 0, away: 0 }
     
-    if (currentMatch.marketData) {
-        const md = currentMatch.marketData;
-        if (md.realTotalPool === 0) {
-            return md.initialOdds;
-        }
-        return oddsEngine.calculateAllDisplayOdds(
-            md.pools,
-            undefined,
-            undefined,
-            currentMatch.score,
-            currentMatch.liveMinute,
-            currentMatch.status
-        );
+    if (!currentMatch.marketData) {
+        const pFallback = currentMatch.pools;
+        const poolDict = {
+          home: pFallback.home,
+          draw: pFallback.draw,
+          away: pFallback.away
+        };
+        return {
+          home: oddsEngine.calculateOdds(poolDict, 'home'),
+          draw: oddsEngine.calculateOdds(poolDict, 'draw'),
+          away: oddsEngine.calculateOdds(poolDict, 'away')
+        };
     }
 
-    // Fallback to legacy mock logic
-    const pFallback = currentMatch.marketData?.pools || currentMatch.pools;
-    const poolDict = {
-      home: pFallback.home,
-      draw: pFallback.draw,
-      away: pFallback.away
+    const md = currentMatch.marketData;
+    if (md.realTotalPool === 0) {
+        return md.initialOdds;
     }
-
-    return {
-      home: oddsEngine.calculateOdds(poolDict, 'home'),
-      draw: oddsEngine.calculateOdds(poolDict, 'draw'),
-      away: oddsEngine.calculateOdds(poolDict, 'away')
-    }
+    return oddsEngine.calculateAllDisplayOdds(
+        md.pools,
+        undefined,
+        undefined,
+        currentMatch.score,
+        currentMatch.liveMinute,
+        currentMatch.status
+    );
   }, [currentMatch, oddsEngine])
 
   // Calculate counts for sidebar badges and organize leagues
@@ -749,47 +921,42 @@ export default function Home() {
   const projectedOdds = useMemo((): { odds: number; riskLevel: RiskLevel } | null => {
       if (!currentMatch || !selectedOutcome || betAmountNum <= 0) return null;
       
-      if (currentMatch.marketData) {
-          const md = currentMatch.marketData;
-          if (md.realTotalPool === 0) {
-              const initOdds = md.initialOdds[selectedOutcome as keyof typeof md.initialOdds] || 1.01;
-              return { odds: parseFloat(initOdds.toFixed(2)), riskLevel: 'normal' as const };
-          }
-          const totalReal = md.realTotalPool;
-          return oddsEngine.calculateDynamicOdds(
-              md.pools,
-              selectedOutcome,
-              betAmountNum,
-              md.liabilities,
-              undefined,
-              undefined,
-              undefined,
-              currentMatch.score,
-              currentMatch.liveMinute,
-              currentMatch.status,
-              undefined,
-              totalReal < 0.50 || undefined,
-              effectiveCommissionRate
-          );
-      }
-      
-      const pLegacy = currentMatch.marketData?.pools || currentMatch.pools;
-      const poolDict = {
-        home: pLegacy.home,
-        draw: pLegacy.draw,
-        away: pLegacy.away
-      }
-      const totalReal = poolDict.home + poolDict.draw + poolDict.away;
-      return oddsEngine.calculateDynamicOdds(
+      if (!currentMatch.marketData) {
+        const poolDict = {
+          home: currentMatch.pools.home,
+          draw: currentMatch.pools.draw,
+          away: currentMatch.pools.away
+        }
+        const totalReal = poolDict.home + poolDict.draw + poolDict.away;
+        return oddsEngine.calculateDynamicOdds(
           poolDict,
           selectedOutcome,
           betAmountNum,
           undefined, undefined, undefined, undefined, undefined, undefined, undefined,
-          undefined,
+          effectiveReturnRate,
           totalReal < 0.50 || undefined,
           effectiveCommissionRate
+        );
+      }
+
+      const md = currentMatch.marketData;
+      const totalReal = md.realTotalPool;
+      return oddsEngine.calculateDynamicOdds(
+          md.pools,
+          selectedOutcome,
+          betAmountNum,
+          md.liabilities,
+          undefined,
+          undefined,
+          undefined,
+          currentMatch.score,
+          currentMatch.liveMinute,
+          currentMatch.status,
+          effectiveReturnRate,
+          totalReal < oddsEngine.getFeeFundedThreshold() || undefined,
+          effectiveCommissionRate
       );
-  }, [currentMatch, selectedOutcome, betAmountNum, oddsEngine, effectiveCommissionRate]);
+  }, [currentMatch, selectedOutcome, betAmountNum, oddsEngine, effectiveCommissionRate, effectiveReturnRate]);
 
   const selectedOdds = projectedOdds ? projectedOdds.odds : (selectedOutcome ? currentOdds[selectedOutcome as keyof typeof currentOdds] : 0)
   
@@ -820,23 +987,7 @@ export default function Home() {
         return;
     }
 
-    if (projectedOdds.riskLevel === 'counterparty') {
-        setCounterpartyOffer({ odds: projectedOdds.odds });
-        return;
-    }
-
     await executePrediction(projectedOdds.odds);
-  };
-
-  const confirmCounterpartyBet = async () => {
-      if (!counterpartyOffer) return;
-      const odds = counterpartyOffer.odds;
-      setCounterpartyOffer(null);
-      await executePrediction(odds);
-  };
-
-  const cancelCounterpartyBet = () => {
-      setCounterpartyOffer(null);
   };
 
   const cancelControllerRef = useRef<AbortController | null>(null);
@@ -867,6 +1018,8 @@ export default function Home() {
     if (!selectedOutcome) return;
     const outcome = selectedOutcome;
     let txSignature: string | null = null;
+    
+    setIsProcessing(true);
 
     const clearTimeoutIfExists = () => {
       if (txTimeoutRef.current) {
@@ -880,6 +1033,7 @@ export default function Home() {
       let poolAmountForDisplay = betAmountNum;
       let houseAmountForDisplay = 0;
       let commissionAmountForDisplay = 0;
+      let supportAmountForDisplay = 0;
       
       // 1. 如果是真實資金投注，發送 USDT SPL Token 轉帳到資金池 + 抽水 + 佣金地址
       if (!useBonus) {
@@ -903,11 +1057,21 @@ export default function Home() {
           }
         }
         
-        const { pool: poolAmount, house: houseAmount, commission: commissionAmount } = splitBetAmount(betAmountNum, commissionRate);
+        const currentRealPool = currentMatch.marketData
+          ? currentMatch.marketData.realTotalPool
+          : (currentMatch.pools.home + currentMatch.pools.draw + currentMatch.pools.away);
+
+        const {
+          pool: poolAmount,
+          house: houseAmount,
+          commission: commissionAmount,
+          support: supportAmount,
+        } = splitBetAmount(betAmountNum, commissionRate, currentRealPool);
         
         poolAmountForDisplay = poolAmount;
         houseAmountForDisplay = houseAmount;
         commissionAmountForDisplay = commissionAmount;
+        supportAmountForDisplay = supportAmount;
 
         const rawPoolAmount = BigInt(Math.floor(poolAmount * Math.pow(10, USDT_DECIMALS)));
         const rawHouseAmount = BigInt(Math.floor(houseAmount * Math.pow(10, USDT_DECIMALS)));
@@ -918,33 +1082,36 @@ export default function Home() {
             throw new Error("Wallet public key is not available");
         }
 
-        // 1) Derive ATAs — all funds go to ADMIN wallet (admin controls key for payouts)
-        const ADMIN_ADDRESS = HOUSE_WALLET; // admin wallet = house = commission
+        // 1) Derive ATAs — pool / house / commission 分流到各自收款地址
         const userATA = findAtaClient(USDT_MINT, actualPublicKey);
-        const adminATA = findAtaClient(USDT_MINT, ADMIN_ADDRESS);
-
-        const totalRawAmount = rawPoolAmount + rawHouseAmount + rawCommissionAmount;
+        const poolATA = findAtaClient(USDT_MINT, POOL_ADDRESS);
+        const adminATA = findAtaClient(USDT_MINT, HOUSE_WALLET);
+        const commissionATA = findAtaClient(USDT_MINT, COMMISSION_WALLET);
 
         // 2) Fetch blockhash
         console.log("[Bet] Fetching blockhash...");
         const blockhash = await fetchBlockhash();
         console.log("[Bet] Blockhash:", blockhash);
 
-        // 3) Check admin ATA exists (single destination)
-        console.log("[Bet] Checking admin ATA...");
-        const atasNeeded = await checkAtasNeeded([{ ata: adminATA, owner: ADMIN_ADDRESS }]);
-        const numAtas = atasNeeded.length;
+        // 3) Check destination ATAs exist
+        console.log("[Bet] Checking destination ATAs...");
+        const atasNeeded = await checkAtasNeeded([
+          { ata: poolATA, owner: POOL_ADDRESS, label: '獎池 Pool (派彩用)' },
+          { ata: adminATA, owner: HOUSE_WALLET, label: '平台淨收益收款' },
+          { ata: commissionATA, owner: COMMISSION_WALLET, label: '平台佣金收款' },
+        ]);
+        const confirmedNeeded = atasNeeded.filter(a => !a.unknown);
+        const numAtasConfirmed = confirmedNeeded.length;
 
-        if (numAtas > 0) {
-          const ataCostLamports = estimateAtaCost(numAtas);
-          const gasEstLamports = estimateGasCost(3 + numAtas);
+        if (numAtasConfirmed > 0) {
+          const ataCostLamports = estimateAtaCost(numAtasConfirmed);
+          const gasEstLamports = estimateGasCost(3 + numAtasConfirmed);
           const totalSolNeeded = (ataCostLamports + gasEstLamports) / 1e9;
 
-          const isAdminUser = actualPublicKey.toBase58() === COMMISSION_WALLET.toBase58();
+          const actualAddress = actualPublicKey.toBase58();
+          const isAdminUser = actualAddress === HOUSE_WALLET.toBase58() || actualAddress === COMMISSION_WALLET.toBase58();
           if (!isAdminUser) {
-            throw new Error(
-              `平台尚未初始化收款帳戶。\n\n請聯絡管理員到 Admin 面板點擊「收款 ATA 初始化」按鈕（一次性操作，約 ~${(ataCostLamports / 1e9).toFixed(4)} SOL）。\n\n初始化後即可正常投注，無需額外 SOL。`
-            );
+            throw new Error(formatMissingAtaInitializationMessage(confirmedNeeded.map((entry) => entry.label)));
           }
 
           const solBalance = await getSolBalanceViaProxy(actualPublicKey.toBase58());
@@ -958,13 +1125,13 @@ export default function Home() {
           console.log(`[Bet] ✅ Admin SOL balance sufficient (${solBalanceNum.toFixed(4)} SOL)`);
         }
 
-        // 4) Build transaction (simple: 1 createATA + 1 memo + 1 transfer)
+        // 4) Build transaction with split transfers
         let transaction = new Transaction();
         transaction.feePayer = actualPublicKey;
         transaction.recentBlockhash = blockhash;
         transaction.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 400000 }));
 
-        for (const { ata, owner } of atasNeeded) {
+        for (const { ata, owner } of confirmedNeeded) {
           transaction.add(createAtaInstruction(actualPublicKey, ata, owner, USDT_MINT));
         }
 
@@ -975,9 +1142,15 @@ export default function Home() {
             programId: new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"),
         }));
 
-        transaction.add(splTransferInstruction(userATA, adminATA, actualPublicKey, totalRawAmount));
+        transaction.add(splTransferInstruction(userATA, poolATA, actualPublicKey, rawPoolAmount));
+        if (rawHouseAmount > 0n) {
+          transaction.add(splTransferInstruction(userATA, adminATA, actualPublicKey, rawHouseAmount));
+        }
+        if (rawCommissionAmount > 0n) {
+          transaction.add(splTransferInstruction(userATA, commissionATA, actualPublicKey, rawCommissionAmount));
+        }
 
-        // 5) Sign & send via Phantom's own RPC (with 90s timeout)
+        // 5) Sign & send via Phantom (skip preflight: server-side already validates)
         setTxStatus("submitting");
         console.log("[Bet] Calling Phantom signAndSendTransaction...");
         
@@ -986,42 +1159,28 @@ export default function Home() {
           throw new Error("Phantom 錢包未偵測到，請確認錢包已解鎖。");
         }
         
-        const SIGN_TIMEOUT_MS = 90_000;
+        const SIGN_TIMEOUT_MS = 60_000;
         const cancelController = new AbortController();
         cancelControllerRef.current = cancelController;
         
+        const signPromise = provider.signAndSendTransaction(transaction, { skipPreflight: true });
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          txTimeoutRef.current = setTimeout(() => {
+            cancelController.abort();
+            reject(new Error("簽名請求超時：Phantom 錢包未在 60 秒內回應。請確認錢包已解鎖且彈窗未被瀏覽器阻擋。"));
+          }, SIGN_TIMEOUT_MS);
+        });
+        
         let signature: string;
         try {
-          const signPromise = provider.signAndSendTransaction(transaction, { skipPreflight: false });
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            txTimeoutRef.current = setTimeout(() => {
-              cancelController.abort();
-              reject(new Error("簽名請求超時：Phantom 錢包未在 90 秒內回應。請確認錢包已解鎖且彈窗未被瀏覽器阻擋。"));
-            }, SIGN_TIMEOUT_MS);
-          });
-          
           const result = await Promise.race([signPromise, timeoutPromise]);
           signature = result.signature;
         } catch (walletErr: any) {
           clearTimeoutIfExists();
-          if (cancelController.signal.aborted) {
-            throw walletErr;
-          }
           if (walletErr?.message?.includes?.("User rejected") || walletErr?.message?.includes?.("user rejected") || walletErr?.code === 4001) {
             throw walletErr;
           }
-          console.log("[Bet] Retry with skipPreflight");
-          const retryCancelController = new AbortController();
-          cancelControllerRef.current = retryCancelController;
-          const retryPromise = provider.signAndSendTransaction(transaction, { skipPreflight: true });
-          const retryTimeoutPromise = new Promise<never>((_, reject) => {
-            txTimeoutRef.current = setTimeout(() => {
-              retryCancelController.abort();
-              reject(new Error("簽名請求超時：Phantom 錢包未在 90 秒內回應。請確認錢包已解鎖且彈窗未被瀏覽器阻擋。"));
-            }, SIGN_TIMEOUT_MS);
-          });
-          const result = await Promise.race([retryPromise, retryTimeoutPromise]);
-          signature = result.signature;
+          throw walletErr;
         }
         clearTimeoutIfExists();
         cancelControllerRef.current = null;
@@ -1042,7 +1201,7 @@ export default function Home() {
       }
 
       // 交易成功後，更新前端的狀態與資料庫
-      setMatches(prevMatches => prevMatches.map(m => {
+      setMatchesIfChanged(prevMatches => prevMatches.map(m => {
           if (m.id === selectedMatchId) {
               const updatedMatch = { ...m };
               
@@ -1052,7 +1211,7 @@ export default function Home() {
                   const effectivePool = !useBonus ? poolAmountForDisplay : betAmountNum;
                   updatedMatch.marketData = {
                       ...md,
-                      // 真實資金僅 poolAmount 進獎池，體驗金全額
+                      // 真實資金進獎池 = base pool + 冷啟動 support，體驗金則全額入池
                       realTotalPool: md.realTotalPool + effectivePool,
                       liabilities: {
                           ...md.liabilities,
@@ -1112,7 +1271,16 @@ export default function Home() {
                   signature: txSignature,
                   liveMinute: matchInfo.liveMinute
               })
-          }).catch(err => console.error('Failed to save bet to backend:', err));
+          })
+          .then(async res => {
+              const json = await res.json().catch(() => ({}));
+              if (!res.ok || !json.success) {
+                  console.error('Bet save rejected by server:', json.error || res.statusText);
+                  return;
+              }
+              setBetsRefreshKey(k => k + 1);
+          })
+          .catch(err => console.error('Failed to save bet to backend:', err));
 
           // Notify Referral API to process potential bonus (Only for real money bets)
           if (!useBonus) {
@@ -1127,6 +1295,7 @@ export default function Home() {
                       poolAmount: poolAmountForDisplay,
                       houseAmount: houseAmountForDisplay,
                       commissionAmount: commissionAmountForDisplay,
+                      supportAmount: supportAmountForDisplay,
                       signature: txSignature
                   })
               })
@@ -1213,6 +1382,23 @@ export default function Home() {
       return validBets;
   }, [myBets, dateFilter]);
 
+  const matchGroups = useMemo(() => {
+    const groups: { matchName: string; bets: BetRecord[] }[] = [];
+    const seen = new Set<string>();
+    for (const bet of filteredMyBets) {
+      if (!seen.has(bet.matchName)) {
+        seen.add(bet.matchName);
+        groups.push({ matchName: bet.matchName, bets: [] });
+      }
+      groups[groups.length - 1].bets.push(bet);
+    }
+    return groups;
+  }, [filteredMyBets]);
+
+  useEffect(() => {
+    setCurrentBetPage(0);
+  }, [dateFilter]);
+
   // 1. 若有推薦參數且尚未連線，顯示邀請落地頁
   if (showReferralLanding && urlReferrer && !connected) {
       return (
@@ -1222,6 +1408,52 @@ export default function Home() {
           />
       );
   }
+
+  const betActionNode = useMemo(() => {
+    if (projectedOdds?.riskLevel === 'position_limit') {
+      return (
+        <div className="space-y-3 p-4 bg-error/10 border border-error/30 rounded-xl">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">🚫</span>
+            <div>
+              <p className="text-sm font-bold text-error">{t('error.position_limit_title') || '持倉上限已達'}</p>
+              <p className="text-xs text-error/80 mt-1">
+                {t('error.position_limit_desc')?.replace('{max}', (oddsEngine.getMaxPositionRatio() * 100).toFixed(0)) || `該選項已達到平台設定的持倉上限 (${(oddsEngine.getMaxPositionRatio() * 100).toFixed(0)}%)，為保護平台償付能力，暫時不接受此選項的投注。`}
+              </p>
+              <p className="text-xs text-neutral-400 mt-2">
+                {t('error.position_limit_hint') || '請選擇其他選項，或等待其他用戶注入資金後再試。'}
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    if (projectedOdds === null && amount) {
+      return (
+        <Button 
+          className="w-full bg-error/20 text-error hover:bg-error/30 font-bold tracking-wide"
+          size="lg"
+          disabled
+        >
+          {t('error.low_odds')}
+        </Button>
+      );
+    }
+    return (
+      <Button 
+        className={`w-full text-white shadow-lg transition-all duration-300 font-bold tracking-wide ${txStatus === "success" ? "bg-success hover:bg-success/90 text-neutral-900" : txStatus === "confirming" ? "bg-warning/80 hover:bg-warning/90 text-neutral-900" : useBonus && trialBalance > 0 ? "bg-gradient-to-r from-orange-500 to-amber-500 hover:shadow-orange-500/25 hover:scale-[1.02]" : "bg-gradient-to-r from-primary-purple to-primary-blue hover:shadow-primary-purple/25 hover:scale-[1.02]"}`}
+        size="lg"
+        disabled={isProcessing || (!connected ? true : !amount) || txStatus === "success"}
+        onClick={handlePrediction}
+      >
+        {!connected ? t('wallet.connect') : 
+         txStatus === "idle" ? t('btn.confirm') :
+         txStatus === "submitting" ? t('btn.submitting') :
+         txStatus === "confirming" ? t('btn.confirming') :
+         t('btn.success')}
+      </Button>
+    );
+  }, [projectedOdds, projectedOdds?.riskLevel, amount, txStatus, useBonus, trialBalance, isProcessing, connected, t, oddsEngine, handlePrediction]);
 
   // 2. 主應用程式視圖
   return (
@@ -1416,21 +1648,46 @@ export default function Home() {
              
           </div>
 
+          {/* Time Filter Bar */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
+            {(['live', '1day', '3days', '7days', 'all'] as const).map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setTimeFilter(filter)}
+                className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 ${
+                  timeFilter === filter
+                    ? filter === 'live'
+                      ? 'bg-error/20 text-error border border-error/30 shadow-[0_0_10px_rgba(239,68,68,0.2)]'
+                      : 'bg-primary-purple/20 text-primary-purple border border-primary-purple/30 shadow-[0_0_10px_rgba(153,69,255,0.2)]'
+                    : 'bg-neutral-800/50 text-neutral-400 hover:text-white hover:bg-neutral-800 border border-transparent hover:border-neutral-700/50'
+                }`}
+              >
+                {filter === 'live' && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-error rounded-full animate-pulse" />
+                    {t('filter.time.live')}
+                  </span>
+                )}
+                {filter !== 'live' && t(`filter.time.${filter}`)}
+              </button>
+            ))}
+          </div>
+
           {/* Match Grid */}
-          <div className="space-y-6 mt-16 pt-4">
+          <div className="space-y-6 mt-2 pt-4">
             {isLoading ? (
                 <div className="col-span-full text-center py-32 text-neutral-500 animate-pulse">
                     <div className="h-12 w-12 mx-auto mb-4 rounded-full border-4 border-primary-purple/30 border-t-primary-purple animate-spin" />
                     <p className="text-lg font-medium text-neutral-400">{t('status.loading')}</p>
                 </div>
-            ) : groupedMatches.length === 0 ? (
+            ) : paginatedGroupedMatches.length === 0 ? (
               <div className="col-span-full text-center py-20 text-neutral-500">
                 <Trophy className="h-12 w-12 mx-auto mb-4 opacity-20" />
                 <p>{t('status.no_matches')}</p>
                 <button onClick={() => window.location.reload()} className="mt-4 text-primary-blue hover:underline">{t('action.refresh')}</button>
               </div>
             ) : (
-              groupedMatches.map(({ league, matches }) => (
+              paginatedGroupedMatches.map(({ league, matches }) => (
                 <section key={league} className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                    {league !== t('label.all_matches') && (
                        <div className="flex items-center gap-3 border-b border-neutral-800 pb-2">
@@ -1452,14 +1709,24 @@ export default function Home() {
 
                         if (match.marketData) {
                             const md = match.marketData;
-                            if (md.realTotalPool === 0) {
-                                matchOdds = { home: md.initialOdds.home, draw: md.initialOdds.draw, away: md.initialOdds.away };
-                            } else if (isFocused) {
-                                matchOdds = {
-                                    home: oddsEngine.calculateDynamicOdds(md.pools, 'home', betAmountNum, md.liabilities, undefined, undefined, undefined, match.score, match.liveMinute, match.status)?.odds || 1.01,
-                                    draw: oddsEngine.calculateDynamicOdds(md.pools, 'draw', betAmountNum, md.liabilities, undefined, undefined, undefined, match.score, match.liveMinute, match.status)?.odds || 1.01,
-                                    away: oddsEngine.calculateDynamicOdds(md.pools, 'away', betAmountNum, md.liabilities, undefined, undefined, undefined, match.score, match.liveMinute, match.status)?.odds || 1.01,
+                            if (isFocused && selectedOutcome) {
+                                const projectedPools = {
+                                    home: md.pools.home || 0,
+                                    draw: md.pools.draw || 0,
+                                    away: md.pools.away || 0,
                                 };
+                                projectedPools[selectedOutcome as keyof typeof projectedPools] += betAmountNum;
+                                const isFeeFunded = md.realTotalPool < oddsEngine.getFeeFundedThreshold();
+                                const result = oddsEngine.calculateAllDisplayOdds(
+                                    projectedPools, undefined, undefined,
+                                    match.score, match.liveMinute, match.status,
+                                    effectiveReturnRate,
+                                    isFeeFunded || undefined,
+                                    effectiveCommissionRate
+                                );
+                                matchOdds = { home: result.home, draw: result.draw, away: result.away };
+                            } else if (md.realTotalPool === 0) {
+                                matchOdds = { home: md.initialOdds.home, draw: md.initialOdds.draw, away: md.initialOdds.away };
                             } else {
                                 const result = oddsEngine.calculateAllDisplayOdds(
                                     md.pools, undefined, undefined,
@@ -1468,11 +1735,29 @@ export default function Home() {
                                 matchOdds = { home: result.home, draw: result.draw, away: result.away };
                             }
                         } else {
-                            const result = oddsEngine.calculateAllDisplayOdds(
-                                { home: match.pools.home, draw: match.pools.draw, away: match.pools.away },
-                                undefined, undefined, match.score, match.liveMinute, match.status
-                            );
-                            matchOdds = { home: result.home, draw: result.draw, away: result.away };
+                            const pools = { home: match.pools.home, draw: match.pools.draw, away: match.pools.away };
+                            if (isFocused && selectedOutcome) {
+                                const projectedPools = { ...pools };
+                                projectedPools[selectedOutcome as keyof typeof projectedPools] += betAmountNum;
+                                const totalReal = pools.home + pools.draw + pools.away;
+                                const result = oddsEngine.calculateAllDisplayOdds(
+                                    projectedPools,
+                                    undefined,
+                                    undefined,
+                                    match.score,
+                                    match.liveMinute,
+                                    match.status,
+                                    effectiveReturnRate,
+                                    totalReal < oddsEngine.getFeeFundedThreshold() || undefined,
+                                    effectiveCommissionRate
+                                );
+                                matchOdds = { home: result.home, draw: result.draw, away: result.away };
+                            } else {
+                                const result = oddsEngine.calculateAllDisplayOdds(
+                                    pools, undefined, undefined, match.score, match.liveMinute, match.status
+                                );
+                                matchOdds = { home: result.home, draw: result.draw, away: result.away };
+                            }
                         }
                         const totalPool = (() => {
                             if (match.marketData?.pools) {
@@ -1611,35 +1896,6 @@ export default function Home() {
                             })}
                           </div>
 
-                          {/* 集中度分布條 */}
-                          {totalPool > 0 && (() => {
-                            const poolsForBar = match.marketData?.pools || match.pools;
-                            const hPct = poolsForBar.home / totalPool * 100;
-                            const dPct = poolsForBar.draw / totalPool * 100;
-                            const aPct = poolsForBar.away / totalPool * 100;
-                            const maxPct = Math.max(hPct, dPct, aPct);
-                            const maxThreshold = oddsEngine.getMaxPositionRatio() * 100;
-                            return (
-                              <div className="space-y-1 mt-2">
-                                <div className="flex h-1.5 rounded-full overflow-hidden bg-neutral-700/50">
-                                  <div style={{ width: hPct + '%' }} className="bg-blue-500/70 transition-all duration-500" title={'Home: ' + hPct.toFixed(1) + '%'} />
-                                  <div style={{ width: dPct + '%' }} className="bg-amber-500/70 transition-all duration-500" title={'Draw: ' + dPct.toFixed(1) + '%'} />
-                                  <div style={{ width: aPct + '%' }} className="bg-red-500/70 transition-all duration-500" title={'Away: ' + aPct.toFixed(1) + '%'} />
-                                </div>
-                                <div className="flex justify-between text-[10px] text-neutral-500">
-                                  <span>H: {hPct.toFixed(1)}%</span>
-                                  <span>D: {dPct.toFixed(1)}%</span>
-                                  <span>A: {aPct.toFixed(1)}%</span>
-                                </div>
-                                {maxPct >= 60 && (
-                                  <div className={'text-[10px] px-2 py-0.5 rounded-full inline-block ' + (maxPct >= maxThreshold ? 'bg-error/20 text-error' : maxPct >= 75 ? 'bg-amber-500/20 text-amber-400' : 'bg-neutral-600/30 text-neutral-400')}>
-                                    {maxPct >= maxThreshold ? '⚠ 持倉達上限' : maxPct >= 75 ? '⚡ 高集中度' : '📊 關注中'}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
-
                           {/* Betting Input Area (Progressive Disclosure) */}
                           {selectedMatchId === match.id && (
                             <div className="space-y-4 pt-4 border-t border-neutral-700/50 animate-in slide-in-from-top-2 fade-in duration-300">
@@ -1737,12 +1993,28 @@ export default function Home() {
                                 </div>
                               </div>
 
-                              <div className={`p-4 rounded-lg space-y-2 border ${useBonus && trialBalance > 0 ? 'bg-orange-500/5 border-orange-500/20' : 'bg-neutral-900/50 border-neutral-800'}`}>
+                              {(() => {
+                                if (!currentMatch?.marketData || !selectedOutcome || betAmountNum <= 0) return null;
+                                const md = currentMatch.marketData;
+                                if (md.realTotalPool === 0) return null;
+                                const xMax = oddsEngine.getMaxBetAmount(md.pools, selectedOutcome);
+                                if (xMax <= 0 || xMax >= 999999) return null;
+                                const isOver = betAmountNum > xMax;
+                                return (
+                                  <div className={`text-xs px-3 py-2 rounded-lg ${isOver ? 'bg-error/10 border border-error/30 text-error' : 'bg-neutral-800/50 text-neutral-400'}`}>
+                                    {isOver
+                                      ? `⚠️ 超出上限！此選項最大可投注 ${xMax.toFixed(4)} USDT`
+                                      : `最大可投注: ${xMax.toFixed(4)} USDT（超過後賠率低於 1.01）`}
+                                  </div>
+                                );
+                              })()}
+
+                              <div className="p-4 rounded-lg space-y-2 border border-neutral-800 bg-neutral-900/50">
                                 {projectedOdds && (
                                   <div className="flex justify-between text-sm">
                                     <span className="text-neutral-500">{t('bets.odds') || '鎖定賠率'}</span>
                                     <span className={`font-bold ${projectedOdds.riskLevel === 'counterparty' ? 'text-amber-400' : projectedOdds.riskLevel === 'refund_single_side' ? 'text-neutral-400' : 'text-primary-blue'}`}>
-                                      ×{projectedOdds.odds.toFixed(2)}
+                                      ×{projectedOdds.odds.toFixed(4)}
                                       {projectedOdds.riskLevel === 'refund_single_side' && <span className="text-[10px] text-neutral-500 ml-1">({t('bets.status.refunded') || '可退款'})</span>}
                                     </span>
                                   </div>
@@ -1757,89 +2029,12 @@ export default function Home() {
                                     {projectedOdds ? (betAmountNum * projectedOdds.odds).toFixed(2) : "0.00"} {useBonus && trialBalance > 0 ? 'tUSDT' : 'USDT'}
                                   </span>
                                 </div>
+                              {betActionNode}
                               </div>
-
-                              {counterpartyOffer ? (
-                                  <div className="space-y-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
-                                      <div className="flex items-start gap-3">
-                                          <span className="text-2xl">⚡</span>
-                                          <div>
-                                              <p className="text-sm font-bold text-amber-400">{t('counterparty.title') || '對手盤資金保障模式'}</p>
-                                              <p className="text-xs text-amber-300/80 mt-1">
-                                                  {t('counterparty.desc')?.replace('{odds}', counterpartyOffer.odds.toFixed(2)) || `該選項對手盤資金不足，賠率已強制下調至 ${counterpartyOffer.odds.toFixed(2)}（潛在賠付 = 對手盤總資金）。`}
-                                              </p>
-                                              <p className="text-xs text-neutral-400 mt-2">
-                                                  {t('counterparty.hint') || '接受新賠率則成交，否則取消。平台不承擔任何超額賠付風險。'}
-                                              </p>
-                                          </div>
-                                      </div>
-                                      <div className="flex gap-3">
-                                          <Button
-                                              className="flex-1 bg-success/80 hover:bg-success text-neutral-900 font-bold"
-                                              size="lg"
-                                              onClick={confirmCounterpartyBet}
-                                          >
-                                              {t('counterparty.accept')?.replace('{odds}', counterpartyOffer.odds.toFixed(2)) || `接受 ${counterpartyOffer.odds.toFixed(2)}`}
-                                          </Button>
-                                          <Button
-                                              className="flex-1 bg-neutral-700 hover:bg-neutral-600 text-neutral-300"
-                                              size="lg"
-                                              onClick={cancelCounterpartyBet}
-                                          >
-                                              {t('counterparty.cancel') || '取消'}
-                                          </Button>
-                                      </div>
-                                  </div>
-                              ) : (
-                              <>
-                              {projectedOdds?.riskLevel === 'position_limit' ? (
-                                  <div className="space-y-3 p-4 bg-error/10 border border-error/30 rounded-xl">
-                                      <div className="flex items-start gap-3">
-                                          <span className="text-2xl">🚫</span>
-                                          <div>
-                                              <p className="text-sm font-bold text-error">{t('error.position_limit_title') || '持倉上限已達'}</p>
-                                              <p className="text-xs text-error/80 mt-1">
-                                                  {t('error.position_limit_desc')?.replace('{max}', (oddsEngine.getMaxPositionRatio() * 100).toFixed(0)) || `該選項已達到平台設定的持倉上限 (${(oddsEngine.getMaxPositionRatio() * 100).toFixed(0)}%)，為保護平台償付能力，暫時不接受此選項的投注。`}
-                                              </p>
-                                              <p className="text-xs text-neutral-400 mt-2">
-                                                  {t('error.position_limit_hint') || '請選擇其他選項，或等待其他用戶注入資金後再試。'}
-                                              </p>
-                                          </div>
-                                      </div>
-                                  </div>
-                              ) : projectedOdds === null && amount ? (
-                                  <Button 
-                                      className="w-full bg-error/20 text-error hover:bg-error/30 font-bold tracking-wide"
-                                      size="lg"
-                                      disabled
-                                  >
-                                      {t('error.low_odds')}
-                                  </Button>
-                              ) : (
-                                  <Button 
-                                    className={`w-full text-white shadow-lg transition-all duration-300 font-bold tracking-wide ${
-                                      txStatus === "success" ? "bg-success hover:bg-success/90 text-neutral-900" :
-                                      txStatus === "confirming" ? "bg-warning/80 hover:bg-warning/90 text-neutral-900" :
-                                      useBonus && trialBalance > 0 ? "bg-gradient-to-r from-orange-500 to-amber-500 hover:shadow-orange-500/25 hover:scale-[1.02]" :
-                                      "bg-gradient-to-r from-primary-purple to-primary-blue hover:shadow-primary-purple/25 hover:scale-[1.02]"
-                                    }`} 
-                                    size="lg"
-                                    disabled={isProcessing || (!connected ? true : !amount) || txStatus === "success"}
-                                    onClick={handlePrediction}
-                                  >
-                                    {!connected ? t('wallet.connect') : 
-                                     txStatus === "idle" ? t('btn.confirm') :
-                                     txStatus === "submitting" ? t('btn.submitting') :
-                                     txStatus === "confirming" ? t('btn.confirming') :
-                                     t('btn.success')}
-                                  </Button>
-                              )}
-                              </>
-                              )}
-                              </>
-                              )}
-                            </div>
-                          )}
+                          </>
+                            )}
+                          </div>
+                            )}
                         </CardContent>
                       </Card>
                     )})
@@ -1849,9 +2044,32 @@ export default function Home() {
               ))
             )}
           </div>
-          
+
+          {/* Match Pagination */}
+          {totalMatchPages > 1 && (
+            <div className="flex items-center justify-center gap-4 pt-8 pb-4">
+              <button
+                onClick={() => setCurrentMatchPage(p => Math.max(0, p - 1))}
+                disabled={currentMatchPage === 0}
+                className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 hover:text-white transition-colors text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                ← {t('pagination.prev')}
+              </button>
+              <span className="text-sm text-neutral-500 font-medium">
+                {t('pagination.page')} {currentMatchPage + 1} / {totalMatchPages}
+              </span>
+              <button
+                onClick={() => setCurrentMatchPage(p => Math.min(totalMatchPages - 1, p + 1))}
+                disabled={currentMatchPage >= totalMatchPages - 1}
+                className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 hover:text-white transition-colors text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                {t('pagination.next')} →
+              </button>
+            </div>
+          )}
+
           {/* Transaction History / My Bets */}
-          {connected && myBets.some(bet => Date.now() - bet.timestamp <= 90 * 24 * 60 * 60 * 1000) && (
+          {connected && (
              <div className="mt-16 space-y-6">
                 <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
                     <div className="flex items-center gap-3">
@@ -1860,7 +2078,7 @@ export default function Home() {
                             {t('bets.title')}
                         </h2>
                         <span className="text-xs font-medium bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded-full border border-neutral-700 hidden sm:inline-block">
-                            {filteredMyBets.length} {t('label.matches')}
+                            {matchGroups.length} {t('label.matches')}
                         </span>
                     </div>
                     
@@ -1879,67 +2097,111 @@ export default function Home() {
                         </select>
                     </div>
                 </div>
-                <div className="bg-neutral-800/30 border border-neutral-800 rounded-3xl overflow-hidden backdrop-blur-sm">
-                    <div className="grid grid-cols-5 text-xs font-bold text-neutral-500 uppercase tracking-wider p-4 border-b border-neutral-800 bg-neutral-900/50">
-                        <div className="col-span-2">{t('bets.match')}</div>
-                        <div>{t('bets.outcome')}</div>
-                        <div className="text-right">{t('bets.amount')}</div>
-                        <div className="text-right">{t('bets.odds')}</div>
+                
+                {matchGroups.length === 0 ? (
+                    <div className="bg-neutral-800/30 border border-neutral-800 rounded-3xl overflow-hidden backdrop-blur-sm">
+                        <div className="p-8 text-center text-neutral-500 text-sm">
+                            {language === 'zh-TW' ? '此期間沒有投注記錄' : 
+                             language === 'zh-CN' ? '此期间没有投注记录' : 
+                             language === 'ja' ? 'この期間の賭けはありません' :
+                             language === 'ar' ? 'لا توجد رهانات لهذه الفترة' :
+                             language === 'th' ? 'ไม่พบการเดิมพันสำหรับช่วงเวลานี้' :
+                             'No bets found for this period'}
+                        </div>
                     </div>
-                    <div className="divide-y divide-neutral-800/50 max-h-[600px] overflow-y-auto">
-                        {filteredMyBets.length === 0 ? (
-                            <div className="p-8 text-center text-neutral-500 text-sm">
-                                {language === 'zh-TW' ? '此期間沒有投注記錄' : 
-                                 language === 'zh-CN' ? '此期间没有投注记录' : 
-                                 language === 'ja' ? 'この期間の賭けはありません' :
-                                 language === 'ar' ? 'لا توجد رهانات لهذه الفترة' :
-                                 language === 'th' ? 'ไม่พบการเดิมพันสำหรับช่วงเวลานี้' :
-                                 'No bets found for this period'}
+                ) : (
+                    (() => {
+                        const group = matchGroups[currentBetPage];
+                        if (!group || !group.bets || group.bets.length === 0) {
+                          return (
+                            <div className="bg-neutral-800/30 border border-neutral-800 rounded-3xl overflow-hidden backdrop-blur-sm">
+                              <div className="p-8 text-center text-neutral-500 text-sm">{t('status.no_matches') || 'No bets'}</div>
                             </div>
-                        ) : filteredMyBets.map((bet) => {
-                            const parts = bet.matchName.split(' vs ');
-                            let displayMatchName = bet.matchName;
-                            if (parts.length === 2) {
-                                const getTeamTrans = (orig: string) => {
-                                    const exact = TEAM_NAMES[orig]?.[language];
-                                    if (exact) return exact;
-                                    const lowerOrig = orig.toLowerCase();
-                                    for (const [key, translations] of Object.entries(TEAM_NAMES)) {
-                                        if (lowerOrig.includes(key.toLowerCase()) && (translations as any)[language]) {
-                                            return (translations as any)[language];
-                                        }
+                          );
+                        }
+                        const matchName = group?.matchName || `Match #${group?.bets?.[0]?.matchId || '?'}`;
+                        const parts = matchName.split(' vs ');
+                        let displayMatchName = matchName;
+                        if (parts.length === 2) {
+                            const getTeamTrans = (orig: string) => {
+                                const exact = TEAM_NAMES[orig]?.[language];
+                                if (exact) return exact;
+                                const lowerOrig = orig.toLowerCase();
+                                for (const [key, translations] of Object.entries(TEAM_NAMES)) {
+                                    if (lowerOrig.includes(key.toLowerCase()) && (translations as any)[language]) {
+                                        return (translations as any)[language];
                                     }
-                                    return orig;
-                                };
-                                displayMatchName = `${getTeamTrans(parts[0])} vs ${getTeamTrans(parts[1])}`;
-                            }
-                            return (
-                            <div key={bet.id} className="grid grid-cols-5 gap-4 p-4 items-center hover:bg-neutral-800/50 transition-colors text-sm">
-                                <div className="col-span-2 font-medium text-neutral-300 truncate">
-                                    {displayMatchName}
-                                </div>
-                                <div className="uppercase font-bold text-primary-purple flex flex-col gap-1">
-                                    <span>{t(`outcome.${bet.outcome}`)}</span>
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md inline-block w-fit ${
-                                        bet.status === 'win' ? 'bg-success/20 text-success' :
-                                        bet.status === 'loss' ? 'bg-error/20 text-error' :
-                                        bet.status === 'refunded' ? 'bg-neutral-700 text-neutral-300' :
-                                        'bg-warning/20 text-warning'
-                                    }`}>
-                                        {bet.status === 'win' ? t('bets.status.win') : bet.status === 'loss' ? t('bets.status.loss') : bet.status === 'refunded' ? t('bets.status.refunded') : t('bets.status.pending')}
+                                }
+                                return orig;
+                            };
+                            displayMatchName = `${getTeamTrans(parts[0])} vs ${getTeamTrans(parts[1])}`;
+                        }
+                        const groupTotal = group.bets.reduce((sum, b) => sum + b.amount, 0);
+                        return (
+                            <div className="bg-neutral-800/30 border border-neutral-800 rounded-3xl overflow-hidden backdrop-blur-sm">
+                                <div className="px-4 py-3 border-b border-neutral-800 bg-neutral-900/50 flex items-center justify-between">
+                                    <span className="text-sm font-bold text-white truncate">{displayMatchName}</span>
+                                    <span className="text-xs text-neutral-500">
+                                        {group.bets.length} {language === 'zh-TW' ? '筆' : language === 'zh-CN' ? '笔' : 'bets'} · {t('bets.amount')}: {groupTotal.toFixed(2)} USDT
                                     </span>
                                 </div>
-                                <div className="text-right font-mono font-bold text-white">
-                                    {typeof bet.amount === 'number' ? bet.amount.toFixed(2) : '0.00'}
-                                    {bet.useBonus && <span className="ml-1 text-[10px] text-orange-400 font-sans">{t('bets.trial')}</span>}
+                                <div className="grid grid-cols-4 text-xs font-bold text-neutral-500 uppercase tracking-wider p-3 border-b border-neutral-800/50 bg-neutral-900/30">
+                                    <div>{t('bets.outcome')}</div>
+                                    <div className="text-right">{t('bets.amount')}</div>
+                                    <div className="text-right">{t('bets.odds')}</div>
+                                    <div className="text-right">{t('bets.status.win')}/{t('bets.status.loss')}</div>
                                 </div>
-                                <div className="text-right font-mono text-primary-blue font-bold">
-                                    {bet.odds ? bet.odds.toFixed(2) : '-'}
+                                <div className="divide-y divide-neutral-800/50 max-h-[400px] overflow-y-auto">
+                                    {group.bets.map((bet) => (
+                                        <div key={bet.id} className="grid grid-cols-4 gap-4 p-3 items-center hover:bg-neutral-800/50 transition-colors text-sm">
+                                            <div className="uppercase font-bold text-primary-purple">
+                                                {t(`outcome.${bet.outcome}`)}
+                                            </div>
+                                            <div className="text-right font-mono font-bold text-white">
+                                                {typeof bet.amount === 'number' ? bet.amount.toFixed(2) : '0.00'}
+                                                {bet.useBonus && <span className="ml-1 text-[10px] text-orange-400 font-sans">{t('bets.trial')}</span>}
+                                            </div>
+                                            <div className="text-right font-mono text-primary-blue font-bold">
+                                                {bet.odds ? bet.odds.toFixed(4) : '-'}
+                                            </div>
+                                            <div className="text-right">
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded-md inline-block font-bold ${
+                                                    bet.status === 'win' ? 'bg-success/20 text-success' :
+                                                    bet.status === 'loss' ? 'bg-error/20 text-error' :
+                                                    bet.status === 'refunded' ? 'bg-neutral-700 text-neutral-300' :
+                                                    'bg-warning/20 text-warning'
+                                                }`}>
+                                                    {bet.status === 'win' ? t('bets.status.win') : bet.status === 'loss' ? t('bets.status.loss') : bet.status === 'refunded' ? t('bets.status.refunded') : t('bets.status.pending')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
+                                {matchGroups.length > 1 && (
+                                    <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-800 bg-neutral-900/30">
+                                        <button
+                                            onClick={() => setCurrentBetPage(p => Math.max(0, p - 1))}
+                                            disabled={currentBetPage === 0}
+                                            className="text-xs px-3 py-1.5 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                        >
+                                            ← {language === 'zh-TW' ? '上一場' : language === 'zh-CN' ? '上一场' : 'Prev'}
+                                        </button>
+                                        <span className="text-xs text-neutral-500">
+                                            {currentBetPage + 1} / {matchGroups.length}
+                                        </span>
+                                        <button
+                                            onClick={() => setCurrentBetPage(p => Math.min(matchGroups.length - 1, p + 1))}
+                                            disabled={currentBetPage >= matchGroups.length - 1}
+                                            className="text-xs px-3 py-1.5 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                        >
+                                            {language === 'zh-TW' ? '下一場' : language === 'zh-CN' ? '下一场' : 'Next'} →
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                        )})}
-                    </div>
-                </div>
+                        );
+                    })()
+                )}
              </div>
           )}
         </main>

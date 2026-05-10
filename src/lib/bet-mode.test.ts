@@ -5,6 +5,7 @@ import {
   getReturnRateForBetMode,
   getNetPayoutFromLockedOdds,
 } from './bet-mode';
+import { DynamicOddsEngine } from './odds-engine';
 
 describe('bet mode helpers', () => {
   it('uses the existing platform return rate for real-money bets', () => {
@@ -21,5 +22,25 @@ describe('bet mode helpers', () => {
   it('settles from locked odds without a second deduction', () => {
     expect(getNetPayoutFromLockedOdds(25, 1.84, true)).toBeCloseTo(46, 6);
     expect(getNetPayoutFromLockedOdds(25, 1.84, false)).toBeCloseTo(46, 6);
+  });
+
+  it('can drive projected trial-funds odds from a mode-aware return rate override', () => {
+    const engine = new DynamicOddsEngine();
+    const projected = engine.calculateDynamicOdds(
+      { home: 100, draw: 80, away: 70 },
+      'home',
+      20,
+      { home: 0, draw: 0, away: 0 },
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'upcoming',
+      getReturnRateForBetMode(true)
+    );
+
+    expect(projected).not.toBeNull();
+    expect(projected?.odds).toBeGreaterThan(1.01);
   });
 });
