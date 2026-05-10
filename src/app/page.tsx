@@ -985,11 +985,6 @@ export default function Home() {
     }
 
     if (projectedOdds.riskLevel === 'refund_single_side') {
-        const confirmed = window.confirm(
-            t('confirm.refund_single_side') ||
-            '目前只有此選項有投注，如比賽前仍無人投注其他選項，所有投注將全額退款（不扣手續費）。確定要繼續投注嗎？'
-        );
-        if (!confirmed) return;
         await executePrediction(projectedOdds.odds);
         return;
     }
