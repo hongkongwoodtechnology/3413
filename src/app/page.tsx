@@ -1723,15 +1723,15 @@ export default function Home() {
                                     away: md.pools.away || 0,
                                 };
                                 projectedPools[selectedOutcome as keyof typeof projectedPools] += betAmountNum;
-                                const result = oddsEngine.calculatePhaseAwareDisplayOdds({
-                                    pools: projectedPools,
-                                    initialOdds: md.initialOdds,
-                                    attractionWindowUsed,
-                                    score: match.score,
-                                    liveMinute: match.liveMinute,
-                                    status: match.status,
-                                    returnRate: effectiveReturnRate,
-                                });
+                                const result = oddsEngine.calculateAllDisplayOdds(
+                                    projectedPools,
+                                    undefined,
+                                    undefined,
+                                    match.score,
+                                    match.liveMinute,
+                                    match.status,
+                                    effectiveReturnRate
+                                );
                                 matchOdds = { home: result.home, draw: result.draw, away: result.away };
                             } else if (md.realTotalPool === 0) {
                                 matchOdds = { home: md.initialOdds.home, draw: md.initialOdds.draw, away: md.initialOdds.away };
