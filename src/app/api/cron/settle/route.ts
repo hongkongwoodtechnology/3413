@@ -3,6 +3,7 @@ import { Keypair, PublicKey, Transaction, TransactionInstruction, ComputeBudgetP
 import https from "https";
 import fs from "fs";
 import path from "path";
+import { getNetPayoutFromLockedOdds } from "@/lib/bet-mode";
 
 const ADMIN_ADDRESS = "2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K";
 const USDT_MINT = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB";
@@ -136,7 +137,7 @@ async function getTokenBalance(ata: PublicKey): Promise<bigint> {
       params: [ata.toBase58(), { commitment: "confirmed" }],
     }, "token_balance");
     return BigInt(res?.result?.value?.amount || "0");
-  } catch { return 0n; }
+  } catch { return BigInt(0); }
 }
 
 async function checkAtaExists(ata: PublicKey): Promise<boolean> {
@@ -195,7 +196,7 @@ function saveDb(file: string, data: any) {
 
 interface BetRecord {
   id: string; userAddress: string; matchId: number; matchName: string;
-  outcome: string; amount: number; odds?: number; signature?: string | null;
+  outcome: string; amount: number; odds?: number; netPayout?: number; signature?: string | null;
   status?: string; useBonus: boolean; timestamp: number; paidOut?: boolean;
 }
 
@@ -325,7 +326,9 @@ export async function GET(request: Request) {
     for (const [, bets] of Object.entries(betsDb)) {
       for (const bet of bets) {
         if (bet.status === "win" && !bet.paidOut && !bet.useBonus && bet.amount > 0) {
-          const winAmount = Math.round(bet.amount * (bet.odds || 1) * 1e6) / 1e6;
+          const winAmount = typeof bet.netPayout === "number"
+            ? bet.netPayout
+            : getNetPayoutFromLockedOdds(bet.amount, bet.odds || 1, bet.useBonus);
           const rawAmt = BigInt(Math.floor(winAmount * Math.pow(10, USDT_DECIMALS)));
           wins.push({
             userAddress: bet.userAddress,
@@ -351,7 +354,7 @@ export async function GET(request: Request) {
         for (const ref of data.referees) {
           if ((ref.earnedCommissionValue || 0) > 0.000001 && !ref.commissionPaid) {
             commissions.push({
-              referrerAddress: ref.address || address,
+              referrerAddress: address,
               earnedValue: ref.earnedCommissionValue,
               refId: ref.id,
             });
@@ -363,9 +366,9 @@ export async function GET(request: Request) {
 
     // === Admin ATA 餘額檢查 ===
     const adminAtaBalance = await getTokenBalance(adminAta);
-    const totalNeededRaw = allSplits.reduce((sum, s) => sum + s.rawAmount, 0n);
+    const totalNeededRaw = allSplits.reduce((sum, s) => sum + s.rawAmount, BigInt(0));
     const commissionsNeededRaw = commissions.reduce((sum, c) =>
-      sum + BigInt(Math.floor(c.earnedValue * Math.pow(10, USDT_DECIMALS))), 0n
+      sum + BigInt(Math.floor(c.earnedValue * Math.pow(10, USDT_DECIMALS))), BigInt(0)
     );
     const grandTotalNeeded = totalNeededRaw + commissionsNeededRaw;
     const adminBalanceUi = Number(adminAtaBalance) / Math.pow(10, USDT_DECIMALS);
@@ -412,7 +415,7 @@ export async function GET(request: Request) {
         const refPubkey = new PublicKey(comm.referrerAddress);
         const refAta = findAta(usdtMint, refPubkey);
         const rawAmt = BigInt(Math.floor(comm.earnedValue * Math.pow(10, USDT_DECIMALS)));
-        if (rawAmt <= 0n) continue;
+        if (rawAmt <= BigInt(0)) continue;
 
         const refAtaExists = await checkAtaExists(refAta);
         const blockhash = await getBlockhash();

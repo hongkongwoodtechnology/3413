@@ -3,6 +3,7 @@
  */
 
 import { POST } from './route';
+import { getNetPayoutFromLockedOdds } from '@/lib/bet-mode';
 
 jest.mock('fs', () => ({
   __esModule: true,
@@ -58,5 +59,9 @@ describe('bets POST', () => {
     expect(json.data.useBonus).toBe(true);
     expect(json.data.odds).toBe(2.15);
     expect(json.data.netPayout).toBe(43);
+  });
+
+  it('uses stored locked odds as the only payout basis for trial-funds wins', () => {
+    expect(getNetPayoutFromLockedOdds(20, 2.15, true)).toBeCloseTo(43, 6);
   });
 });
