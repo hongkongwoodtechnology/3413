@@ -38,7 +38,7 @@ const LanguageSwitcher = dynamic(() => import("@/components/LanguageSwitcher").t
 const ReferralModal = dynamic(() => import("@/components/ReferralModal").then(m => ({ default: m.ReferralModal })))
 const ReferralHandler = dynamic(() => import("@/components/ReferralHandler").then(m => ({ default: m.ReferralHandler })))
 const ReferralLandingPage = dynamic(() => import("@/components/ReferralLandingPage").then(m => ({ default: m.ReferralLandingPage })))
-const AdminDashboard = dynamic(() => import("@/components/admin/AdminDashboard").then(m => ({ default: m.AdminDashboard })))
+const QuickPanel = dynamic(() => import("@/components/admin/QuickPanel").then(m => ({ default: m.QuickPanel })))
 const BonusEventPage = dynamic(() => import("@/components/BonusEventPage").then(m => ({ default: m.BonusEventPage })))
 const NewsSection = dynamic(() => import("@/components/NewsSection").then(m => ({ default: m.NewsSection })), { ssr: true })
 const NewsDetailPage = dynamic(() => import("@/components/NewsDetailPage").then(m => ({ default: m.NewsDetailPage })))
@@ -961,7 +961,7 @@ export default function Home() {
       const quote = oddsEngine.calculatePhaseAwareLockedOdds({
           pools: md.pools,
           liabilities: md.liabilities,
-          selectedOutcome,
+          selectedOutcome: selectedOutcome as 'home' | 'draw' | 'away',
           betAmount: betAmountNum,
           initialOdds: md.initialOdds,
           attractionWindowUsed,
@@ -1065,6 +1065,11 @@ export default function Home() {
               commissionRate = DEFAULT_COMMISSION_RATE;
             }
           }
+        }
+        
+        if (!currentMatch) {
+          alert(t('error.match_not_found') || "賽事已不存在，請重新選擇。");
+          return;
         }
         
         const currentRealPool = currentMatch.marketData
@@ -1519,7 +1524,13 @@ export default function Home() {
 
       {(isAdmin && showAdminPanel) ? (
         <main className="flex-1 w-full max-w-[1400px] mx-auto z-10 relative">
-          <AdminDashboard />
+          <QuickPanel
+            cards={[
+              { label: '可見賽事', value: `${visibleMatches.length}` },
+              { label: '已連線錢包', value: connected ? '正常' : '未連線', tone: connected ? 'success' : 'warning' },
+              { label: '我的投注群組', value: `${matchGroups.length}`, tone: matchGroups.length > 0 ? 'warning' : 'default' },
+            ]}
+          />
         </main>
       ) : currentView === 'bonus_event' ? (
         <main className="flex-1 w-full z-10 relative">
