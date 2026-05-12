@@ -11,6 +11,7 @@ import { Trophy, TrendingUp, ShieldCheck, Clock, Search, Filter, AlertTriangle, 
 import { DynamicOddsEngine, type RiskLevel } from "@/lib/odds-engine"
 import { LiquidityAnalyzer } from "@/lib/analytics"
 import { fetchLiveMatches } from "@/lib/api"
+import { shouldSkipChainProgressForBet } from "@/lib/bet-progress"
 import {
   shouldShowMatchesLoading,
   shouldStartMatchesLoading,
@@ -1201,8 +1202,7 @@ export default function Home() {
         // 6) Brief confirmation delay (Phantom already confirmed internally)
         await new Promise(resolve => setTimeout(resolve, 3000));
         console.log("[Bet] Done!");
-      } else {
-        // 如果是體驗金，只在前端模擬延遲 (因為體驗金存在我們後端資料庫)
+      } else if (!shouldSkipChainProgressForBet(useBonus)) {
         setTxStatus("submitting");
         await new Promise(resolve => setTimeout(resolve, 1500));
         setTxStatus("confirming");
