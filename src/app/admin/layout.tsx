@@ -1,63 +1,62 @@
 import React from 'react';
 import Link from 'next/link';
-import { Activity, Users, BarChart2, ShieldAlert, Settings, Hexagon } from 'lucide-react';
+import { LayoutDashboard, LineChart, Shield, Users, Wallet, Hexagon } from 'lucide-react';
+
+const NAV_ITEMS = [
+  { href: '/admin', label: '總覽', icon: LayoutDashboard },
+  { href: '/admin/markets', label: '市場與賽事', icon: LineChart },
+  { href: '/admin/finance', label: '財務與派彩', icon: Wallet },
+  { href: '/admin/users', label: '用戶與推薦', icon: Users },
+  { href: '/admin/secure-audit-logs', label: '安全與系統', icon: Shield },
+];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans">
-      {/* Sidebar - Using brand colors (Indigo/Slate) */}
-      <aside className="w-64 bg-slate-900 text-slate-300 shadow-xl flex flex-col transition-all duration-300">
-        <div className="p-6 border-b border-slate-800 flex items-center gap-3">
-          <div className="bg-indigo-500 p-2 rounded-lg text-white">
+    <div className="flex min-h-screen bg-neutral-950 text-neutral-100 font-sans">
+      <aside className="flex w-72 flex-col border-r border-neutral-800 bg-neutral-900/80 backdrop-blur">
+        <div className="flex items-center gap-3 border-b border-neutral-800 p-6">
+          <div className="rounded-xl bg-primary-purple/20 p-2 text-primary-purple">
             <Hexagon size={24} />
           </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Admin System</h2>
+          <div>
+            <h2 className="text-xl font-bold tracking-tight text-white">PolyBall Admin</h2>
+            <p className="mt-1 text-xs uppercase tracking-[0.2em] text-neutral-500">Back Office</p>
+          </div>
         </div>
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          <Link href="/admin" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-slate-800 hover:text-indigo-400 transition-all duration-200 group">
-            <Activity size={20} className="group-hover:scale-110 transition-transform" />
-            <span className="font-medium">即時監控 (Dashboard)</span>
-          </Link>
-          <Link href="/admin/users" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-slate-800 hover:text-indigo-400 transition-all duration-200 group">
-            <Users size={20} className="group-hover:scale-110 transition-transform" />
-            <span className="font-medium">用戶與介紹人查詢</span>
-          </Link>
-          <Link href="/admin/analytics" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-slate-800 hover:text-indigo-400 transition-all duration-200 group">
-            <BarChart2 size={20} className="group-hover:scale-110 transition-transform" />
-            <span className="font-medium">語言與投注分析</span>
-          </Link>
-          <Link href="/admin/secure-audit-logs" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-slate-800 hover:text-indigo-400 transition-all duration-200 group">
-            <ShieldAlert size={20} className="group-hover:scale-110 transition-transform" />
-            <span className="font-medium">系統安全日誌</span>
-          </Link>
+        <nav className="flex-1 space-y-2 overflow-y-auto p-4">
+          {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="group flex items-center gap-3 rounded-xl border border-transparent px-4 py-3 text-sm font-medium text-neutral-400 transition-all duration-200 hover:border-neutral-800 hover:bg-neutral-800/80 hover:text-white"
+            >
+              <Icon size={18} className="transition-transform duration-200 group-hover:scale-110" />
+              <span>{label}</span>
+            </Link>
+          ))}
         </nav>
-        <div className="p-4 border-t border-slate-800">
-          <button className="flex items-center space-x-3 p-3 w-full rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-all duration-200">
-            <Settings size={20} />
-            <span className="font-medium">登出 (Logout)</span>
-          </button>
+        <div className="border-t border-neutral-800 p-4">
+          <div className="rounded-2xl border border-neutral-800 bg-neutral-950/80 p-4">
+            <div className="mb-1 text-xs uppercase tracking-[0.2em] text-neutral-500">Admin Role</div>
+            <div className="text-sm font-bold text-white">Super Admin</div>
+            <div className="mt-2 text-xs text-neutral-400">統一後台入口與模組導航</div>
+          </div>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="bg-white shadow-sm z-10 p-5 flex justify-between items-center border-b border-slate-200">
-          <h1 className="text-xl font-semibold text-slate-800 tracking-tight">管理員控制台</h1>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 rounded-full border border-indigo-100">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-              <span className="text-sm font-medium text-indigo-700">Role: Super Admin</span>
+      <main className="flex-1 bg-neutral-950">
+        <div className="sticky top-0 z-20 border-b border-neutral-800 bg-neutral-950/80 backdrop-blur">
+          <div className="mx-auto flex max-w-[1440px] items-center justify-between px-6 py-4">
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-neutral-500">Control Center</div>
+              <h1 className="mt-1 text-xl font-semibold tracking-tight text-white">管理員控制台</h1>
+            </div>
+            <div className="rounded-full border border-primary-purple/30 bg-primary-purple/10 px-4 py-2 text-sm font-medium text-primary-purple">
+              Role: Super Admin
             </div>
           </div>
-        </header>
-
-        {/* Content Area */}
-        <div className="flex-1 overflow-auto p-6 lg:p-8 bg-slate-50/50">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
         </div>
+        <div className="mx-auto max-w-[1440px] px-6 py-6">{children}</div>
       </main>
     </div>
   );
