@@ -297,7 +297,7 @@ describe('bets POST', () => {
     expect(json.data.useBonus).toBe(false);
   });
 
-  it('rejects positive trial-funds bets when the match has no existing pool', async () => {
+  it('rejects a trial-funds bet when it would become the first bet in an empty match pool', async () => {
     mockDatabases({
       marketDb: {
         '303': {
@@ -330,10 +330,45 @@ describe('bets POST', () => {
     const json = await res.json();
 
     expect(res.status).toBe(403);
-    expect(json.code).toBe('risk_trial_funds_cap');
-    expect(json.trialFundsCap).toBe(0);
-    expect(json.trialFundsUsed).toBe(0);
-    expect(json.trialFundsRemaining).toBe(0);
+    expect(json.code).toBe('risk_trial_funds_first_bet_blocked');
+    expect(json.error).toContain('體驗金不可作為該場賭池首注');
+  });
+
+  it('allows a real-money bet to open an empty match pool', async () => {
+    mockDatabases({
+      marketDb: {
+        '303': {
+          realTotalPool: 0,
+          liabilities: { home: 0, draw: 0, away: 0 },
+          pools: { home: 0, draw: 0, away: 0 },
+          initialOdds: { home: 2.1, draw: 3.2, away: 3.6 },
+          attractionWindowUsed: { home: 0, draw: 0, away: 0 },
+        },
+      },
+    });
+
+    const req = new Request('http://localhost/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: 'real-user-zero-pool',
+        matchId: 303,
+        matchName: 'Zero Pool Match',
+        outcome: 'home',
+        amount: 1,
+        odds: 2.1,
+        useBonus: false,
+        timestamp: 1234567899,
+        liveMinute: 12,
+      }),
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.data.useBonus).toBe(false);
   });
 
   it('persists attraction-window usage for early cold underdog bets', async () => {
