@@ -5,6 +5,7 @@
 import fs from 'fs';
 import { POST } from './route';
 import { getNetPayoutFromLockedOdds } from '@/lib/bet-mode';
+import { flushMarketDbCache } from '@/lib/marketDb';
 
 jest.mock('fs', () => ({
   __esModule: true,
@@ -41,6 +42,7 @@ function mockDatabases({
   betsDb?: Record<string, unknown>;
   marketDb?: Record<string, unknown>;
 }) {
+  flushMarketDbCache();
   (fs.readFileSync as jest.Mock).mockImplementation((file: string) => {
     if (String(file).includes('bets_db.json')) {
       return JSON.stringify(betsDb);
@@ -72,6 +74,7 @@ function mockDatabases({
 describe('bets POST', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    flushMarketDbCache();
     mockDatabases({});
   });
 

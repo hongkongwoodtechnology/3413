@@ -11,6 +11,8 @@ import { countActiveOutcomes, splitBetByAttractionWindow } from '@/lib/market-ru
 
 // 檔案式資料庫路徑
 const DB_FILE_PATH = path.join(process.cwd(), 'data', 'bets_db.json');
+const TRIAL_FUNDS_CAP_RATIO = 0.15;
+const FLOAT_PRECISION_EPSILON = 1e-9;
 
 type BetRecord = {
   id: string;
@@ -28,6 +30,18 @@ type BetRecord = {
   archived?: boolean;
   paidOut?: boolean;
 };
+
+function getTrialFundsUsageForMatch(
+    db: Record<string, BetRecord[]>,
+    matchId: number | string
+): number {
+    const targetMatchId = String(matchId);
+
+    return Object.values(db)
+        .flat()
+        .filter((bet) => String(bet.matchId) === targetMatchId && bet.useBonus === true)
+        .reduce((sum, bet) => sum + (typeof bet.amount === 'number' ? bet.amount : 0), 0);
+}
 
 // 讀取檔案資料庫
 function loadDatabase(): Record<string, BetRecord[]> {
@@ -177,6 +191,28 @@ export async function POST(request: Request) {
         currentMarket.attractionWindowUsed ||= { home: 0, draw: 0, away: 0 };
         const currentTotalReal = currentPools.home + currentPools.draw + currentPools.away;
         const isFeeFundedCold = currentTotalReal < 0.50;
+
+        if (useBonus) {
+            const trialFundsUsed = getTrialFundsUsageForMatch(db, matchId);
+            const trialFundsCap = Number((currentTotalReal * TRIAL_FUNDS_CAP_RATIO).toFixed(6));
+            const trialFundsRemaining = Math.max(
+                0,
+                Number((trialFundsCap - trialFundsUsed).toFixed(6))
+            );
+
+            if (amount > trialFundsRemaining + FLOAT_PRECISION_EPSILON) {
+                return NextResponse.json(
+                    {
+                        error: `體驗金超出單場上限，目前最多還可使用 ${trialFundsRemaining.toFixed(4)} USDT。`,
+                        code: 'risk_trial_funds_cap',
+                        trialFundsCap,
+                        trialFundsUsed,
+                        trialFundsRemaining,
+                    },
+                    { status: 403 }
+                );
+            }
+        }
 
         const options: Array<'home' | 'draw' | 'away'> = ['home', 'draw', 'away'];
         const opponentPoolBefore = options
