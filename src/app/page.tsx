@@ -1142,6 +1142,16 @@ export default function Home() {
     return groups;
   }, [filteredMyBets]);
 
+  const isTrialFundsFirstBetBlocked = useMemo(() => {
+    if (!useBonus || !currentMatch) return false;
+
+    const currentRealPool = currentMatch.marketData
+      ? currentMatch.marketData.realTotalPool
+      : currentMatch.pools.home + currentMatch.pools.draw + currentMatch.pools.away;
+
+    return currentRealPool === 0;
+  }, [useBonus, currentMatch]);
+
   useEffect(() => {
     setCurrentBetPage(0);
   }, [dateFilter]);
@@ -1180,7 +1190,12 @@ export default function Home() {
       <Button 
         className={`w-full text-white shadow-lg transition-all duration-300 font-bold tracking-wide ${txStatus === "success" ? "bg-success hover:bg-success/90 text-neutral-900" : txStatus === "confirming" ? "bg-warning/80 hover:bg-warning/90 text-neutral-900" : useBonus && trialBalance > 0 ? "bg-gradient-to-r from-orange-500 to-amber-500 hover:shadow-orange-500/25 hover:scale-[1.02]" : "bg-gradient-to-r from-primary-purple to-primary-blue hover:shadow-primary-purple/25 hover:scale-[1.02]"}`}
         size="lg"
-        disabled={isProcessing || (!connected ? true : !amount) || txStatus === "success"}
+        disabled={
+          isProcessing ||
+          (!connected ? true : !amount) ||
+          txStatus === "success" ||
+          isTrialFundsFirstBetBlocked
+        }
         onClick={handlePrediction}
       >
         {!connected ? t('wallet.connect') : 
@@ -1190,7 +1205,20 @@ export default function Home() {
          t('btn.success')}
       </Button>
     );
-  }, [projectedOdds, projectedOdds?.riskLevel, amount, txStatus, useBonus, trialBalance, isProcessing, connected, t, oddsEngine, handlePrediction]);
+  }, [
+    projectedOdds,
+    projectedOdds?.riskLevel,
+    amount,
+    txStatus,
+    useBonus,
+    trialBalance,
+    isProcessing,
+    connected,
+    t,
+    oddsEngine,
+    handlePrediction,
+    isTrialFundsFirstBetBlocked,
+  ]);
 
   // 1. 若有推薦參數且尚未連線，顯示邀請落地頁
   if (shouldPauseMatchesFetching) {
