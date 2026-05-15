@@ -317,6 +317,20 @@
   ],
   "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg": [
     {
+      "id": "bet-1778860381170-nk3nkh",
+      "userAddress": "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg",
+      "matchId": "1775290",
+      "matchName": "加拉夫 vs 卡爾赫",
+      "outcome": "home",
+      "amount": 0.02,
+      "odds": 1.85,
+      "netPayout": 0.037,
+      "signature": "2jxsuMwvczFu61mJWAsDwHixTYXkZtJGxmjd7DyCbsWPXhf6afB26x9wm9SNMPbN126mXq1eF4V9w3L1LQ2FsDDP",
+      "status": "pending",
+      "useBonus": false,
+      "timestamp": 1778860381128
+    },
+    {
       "id": "bet-1778855551905-xhr0l6",
       "userAddress": "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg",
       "matchId": "1766848",
@@ -326,7 +340,7 @@
       "odds": 1.93,
       "netPayout": 0.0193,
       "signature": "4EL8ygpeBYwZs6szfoWMQKCBadevJiz2c7KWKYeDGpmJGmwZ7YveZi1nLS5eRTtG6fdHtgy1s53cGfCNLbuknG44",
-      "status": "pending",
+      "status": "refunded",
       "useBonus": false,
       "timestamp": 1778855551826
     }

@@ -1,73 +1,74 @@
 const path = require('path');
 const fs = require('fs');
 
-// 為了讓 node 能讀取 .env.local，我們需要明確指定路徑
 require('dotenv').config({ path: path.join(__dirname, '../.env.local') });
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const { google } = require('googleapis');
 
-// 設定要備份的資料夾路徑
 const DATA_DIR = path.join(__dirname, '../data');
 
-// 從 .env 讀取 Google OAuth 憑證
-const CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID;
-const CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
-const REFRESH_TOKEN = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
-const FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID;
+const CLIENT_ID = (process.env.GOOGLE_OAUTH_CLIENT_ID || '').replace(/"/g, '');
+const CLIENT_SECRET = (process.env.GOOGLE_OAUTH_CLIENT_SECRET || '').replace(/"/g, '');
+const REFRESH_TOKEN = (process.env.GOOGLE_OAUTH_REFRESH_TOKEN || '').replace(/"/g, '');
+const FOLDER_ID = (process.env.GOOGLE_DRIVE_FOLDER_ID || '').replace(/"/g, '');
+
+const LOG_FILE = path.join(DATA_DIR, 'backups', 'gdrive_backup.log');
+
+function log(message) {
+    const line = `[${new Date().toISOString()}] ${message}`;
+    console.log(line);
+    try {
+        const dir = path.dirname(LOG_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.appendFileSync(LOG_FILE, line + '\n', 'utf-8');
+    } catch (_) {}
+}
 
 async function backupToDrive() {
     if (!CLIENT_ID || !CLIENT_SECRET || !REFRESH_TOKEN || !FOLDER_ID) {
-        console.error('❌ 缺少 Google Drive OAuth 憑證！');
-        console.error('請確保 .env 中已設定 GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_OAUTH_REFRESH_TOKEN 與 GOOGLE_DRIVE_FOLDER_ID。');
+        log('MISSING_CONFIG: Google OAuth credentials incomplete in .env.local');
+        log('  Run: node scripts/get-google-token.js to refresh token.');
         process.exit(1);
     }
 
     if (!fs.existsSync(DATA_DIR)) {
-        console.error(`❌ 找不到資料夾: ${DATA_DIR}`);
-        console.error('沒有資料可以備份。');
+        log(`DATA_DIR_NOT_FOUND: ${DATA_DIR}`);
         process.exit(1);
     }
 
     try {
-        console.log('🔄 正在連接到 Google Drive API (OAuth 2.0)...');
-        
-        // 建立 OAuth2 用戶端
+        log('Connecting to Google Drive API...');
+
         const oauth2Client = new google.auth.OAuth2(
             CLIENT_ID,
             CLIENT_SECRET,
-            "https://developers.google.com/oauthplayground" // Redirect URL
+            'https://developers.google.com/oauthplayground'
         );
 
-        // 設定 Refresh Token，讓程式能永久自動獲取新的 Access Token
-        oauth2Client.setCredentials({
-            refresh_token: REFRESH_TOKEN
-        });
+        oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
 
         const drive = google.drive({ version: 'v3', auth: oauth2Client });
-        
-        // 取得所有 db json 檔案
+
         const filesToBackup = fs.readdirSync(DATA_DIR)
             .filter(file => file.endsWith('.json') && file.includes('_db'));
 
         if (filesToBackup.length === 0) {
-            console.log('⚠️ 找不到任何需要備份的資料庫檔案。');
+            log('No _db.json files found to backup.');
             return;
         }
 
-        console.log(`📦 找到 ${filesToBackup.length} 個資料庫檔案準備備份...`);
+        log(`Found ${filesToBackup.length} db file(s) to upload.`);
 
-        // 產生備份檔案名稱 (包含時間戳記)
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
         for (const file of filesToBackup) {
             const filePath = path.join(DATA_DIR, file);
-            // 檔名格式： 原檔名_backup_時間戳記.json
             const fileName = `${file.replace('.json', '')}_backup_${timestamp}.json`;
 
             const fileMetadata = {
                 name: fileName,
-                parents: FOLDER_ID === 'root' ? undefined : [FOLDER_ID], 
+                parents: FOLDER_ID === 'root' ? undefined : [FOLDER_ID],
             };
 
             const media = {
@@ -75,20 +76,48 @@ async function backupToDrive() {
                 body: fs.createReadStream(filePath),
             };
 
-            console.log(`📤 正在上傳 ${fileName} 到 Google Drive...`);
-            
+            log(`Uploading ${fileName}...`);
+
             const response = await drive.files.create({
                 resource: fileMetadata,
                 media: media,
                 fields: 'id',
             });
 
-            console.log(`✅ 備份成功！檔案 ID: ${response.data.id}`);
+            log(`OK: ${fileName} -> ${response.data.id}`);
         }
-        
-        console.log('🎉 所有資料庫備份完成！');
+
+        log('All files backed up to Google Drive.');
+
+        const allFiles = fs.readdirSync(DATA_DIR)
+            .filter(f => f.endsWith('.json') && f.includes('_db'));
+
+        if (allFiles.length > 0) {
+            const listResp = await drive.files.list({
+                q: `'${FOLDER_ID}' in parents and name contains '_backup_'`,
+                orderBy: 'createdTime desc',
+                pageSize: 100,
+                fields: 'files(id, name, createdTime)',
+            });
+
+            const toKeep = allFiles.length * 7;
+            if (listResp.data.files && listResp.data.files.length > toKeep) {
+                const toDelete = listResp.data.files.slice(toKeep);
+                for (const f of toDelete) {
+                    await drive.files.delete({ fileId: f.id });
+                    log(`Cleaned old: ${f.name}`);
+                }
+            }
+        }
+
+        log('DONE');
     } catch (error) {
-        console.error('❌ 上傳到 Google Drive 時發生錯誤:', error.message);
+        if (error.message && error.message.includes('invalid_grant')) {
+            log('TOKEN_EXPIRED: Refresh token is invalid or expired.');
+            log('  Run: node scripts/get-google-token.js to get a new token.');
+        } else {
+            log(`ERROR: ${error.message}`);
+        }
         process.exit(1);
     }
 }

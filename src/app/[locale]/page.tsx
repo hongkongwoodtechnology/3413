@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useWallet, useConnection } from "@solana/wallet-adapter-react"
 import { WalletButton } from "@/components/WalletButton"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -308,7 +308,8 @@ function estimateGasCost(numSigs: number): number {
 }
 
 export default function Home() {
-  const { connected, publicKey } = useWallet()
+  const { connected, publicKey, sendTransaction } = useWallet()
+  const { connection } = useConnection()
   const { t, language } = useLanguage()
   const dateLocale = language === 'zh-TW' ? 'zh-TW' : language === 'zh-CN' ? 'zh-CN' : 'en-US'
   const [amount, setAmount] = useState<string>("")
@@ -898,20 +899,19 @@ export default function Home() {
           transaction.add(splTransferInstruction(userATA, commissionATA, actualPublicKey, rawCommissionAmount));
         }
 
-        // 5) Sign & send via Phantom (skip preflight: server-side already validates)
+        // 5) Sign & send via wallet adapter (skip preflight: server-side already validates)
         setTxStatus("submitting");
-        console.log("[Bet] Calling Phantom signAndSendTransaction...");
+        console.log("[Bet] Calling wallet adapter sendTransaction...");
         
-        const provider = (window as any)?.solana;
-        if (!provider?.signAndSendTransaction) {
-          throw new Error("Phantom 錢包未偵測到，請確認錢包已解鎖。");
+        if (!sendTransaction) {
+          throw new Error("錢包未支援簽名交易，請確認錢包已解鎖。");
         }
         
         const SIGN_TIMEOUT_MS = 60_000;
         const cancelController = new AbortController();
         cancelControllerRef.current = cancelController;
         
-        const signPromise = provider.signAndSendTransaction(transaction, { skipPreflight: true });
+        const signPromise = sendTransaction(transaction, connection, { skipPreflight: true });
         const timeoutPromise = new Promise<never>((_, reject) => {
           txTimeoutRef.current = setTimeout(() => {
             cancelController.abort();
@@ -921,8 +921,7 @@ export default function Home() {
         
         let signature: string;
         try {
-          const result = await Promise.race([signPromise, timeoutPromise]);
-          signature = result.signature;
+          signature = await Promise.race([signPromise, timeoutPromise]);
         } catch (walletErr: any) {
           clearTimeoutIfExists();
           if (walletErr?.message?.includes?.("User rejected") || walletErr?.message?.includes?.("user rejected") || walletErr?.code === 4001) {
@@ -1489,23 +1488,15 @@ export default function Home() {
                                 away: 0,
                             };
                             if (isFocused && selectedOutcome) {
-                                const projectedPools = {
-                                    home: md.pools.home || 0,
-                                    draw: md.pools.draw || 0,
-                                    away: md.pools.away || 0,
-                                };
-                                projectedPools[selectedOutcome as keyof typeof projectedPools] += betAmountNum;
-                                const activeOutcomeCount = countActiveOutcomes({
-                                    home: md.pools.home || 0,
-                                    draw: md.pools.draw || 0,
-                                    away: md.pools.away || 0,
-                                });
-                                const staysSingleSided =
-                                    activeOutcomeCount === 0 ||
-                                    (activeOutcomeCount === 1 && (md.pools[selectedOutcome as keyof typeof md.pools] || 0) > 0);
-                                if (staysSingleSided) {
+                                if (md.realTotalPool === 0) {
                                     matchOdds = { home: md.initialOdds.home, draw: md.initialOdds.draw, away: md.initialOdds.away };
                                 } else {
+                                    const projectedPools = {
+                                        home: md.pools.home || 0,
+                                        draw: md.pools.draw || 0,
+                                        away: md.pools.away || 0,
+                                    };
+                                    projectedPools[selectedOutcome as keyof typeof projectedPools] += betAmountNum;
                                     const result = oddsEngine.calculateAllDisplayOdds(
                                         projectedPools,
                                         undefined,
@@ -1534,20 +1525,12 @@ export default function Home() {
                         } else {
                             const pools = { home: match.pools.home, draw: match.pools.draw, away: match.pools.away };
                             if (isFocused && selectedOutcome) {
-                                const activeOutcomeCount = countActiveOutcomes({
-                                    home: pools.home || 0,
-                                    draw: pools.draw || 0,
-                                    away: pools.away || 0,
-                                });
-                                const staysSingleSided =
-                                    activeOutcomeCount === 0 ||
-                                    (activeOutcomeCount === 1 && (pools[selectedOutcome as keyof typeof pools] || 0) > 0);
-                                if (staysSingleSided) {
+                                const totalReal = pools.home + pools.draw + pools.away;
+                                if (totalReal === 0) {
                                     matchOdds = { home: 1.01, draw: 1.01, away: 1.01 };
                                 } else {
                                     const projectedPools = { ...pools };
                                     projectedPools[selectedOutcome as keyof typeof projectedPools] += betAmountNum;
-                                    const totalReal = pools.home + pools.draw + pools.away;
                                     const result = oddsEngine.calculateAllDisplayOdds(
                                         projectedPools,
                                         undefined,

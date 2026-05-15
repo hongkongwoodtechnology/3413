@@ -1,7 +1,8 @@
 $ProjectRoot = "c:\Users\USER\Documents\trae_projects\GAMBLE"
 $LogFile = Join-Path $ProjectRoot "data\backups\backup.log"
 $DateStr = Get-Date -Format "yyyy-MM-dd_HHmm"
-$OneDriveBackup = "c:\Users\USER\OneDrive\Documents\GAMBLE_backups"
+$OneDriveExe = "$env:LOCALAPPDATA\Microsoft\OneDrive\OneDrive.exe"
+$OneDriveBackup = "$env:USERPROFILE\OneDrive\Documents\GAMBLE_backups"
 
 $logLines = [System.Collections.ArrayList]::new()
 [void]$logLines.Add("=== Backup $DateStr ===")
@@ -32,7 +33,19 @@ try {
         [void]$logLines.Add("  No changes to commit.")
     }
 
-    [void]$logLines.Add("[3/3] Zip backup ...")
+    [void]$logLines.Add("[3/3] OneDrive ZIP backup ...")
+
+    $onedriveRunning = Get-Process "OneDrive" -ErrorAction SilentlyContinue
+    if (-not $onedriveRunning) {
+        if (Test-Path $OneDriveExe) {
+            Start-Process $OneDriveExe -WindowStyle Hidden
+            [void]$logLines.Add("  Started OneDrive sync.")
+            Start-Sleep -Seconds 3
+        } else {
+            [void]$logLines.Add("  WARNING: OneDrive.exe not found.")
+        }
+    }
+
     if (-not (Test-Path $OneDriveBackup)) {
         New-Item -ItemType Directory -Path $OneDriveBackup -Force | Out-Null
     }
@@ -47,7 +60,7 @@ try {
     $files | Compress-Archive -DestinationPath $ZipDest -Force
 
     $zipSize = [math]::Round((Get-Item $ZipDest).Length / 1KB, 1)
-    [void]$logLines.Add("  Zip saved: $ZipDest ($zipSize KB)")
+    [void]$logLines.Add("  ZIP saved: $ZipDest ($zipSize KB)")
 
     $ziplist = Get-ChildItem $OneDriveBackup -Filter "GAMBLE_*.zip" |
         Sort-Object LastWriteTime -Descending |
@@ -62,5 +75,6 @@ try {
     [void]$logLines.Add("=== FAILED: $_ ===")
 }
 
-$logLines -join "`n" | Out-File -FilePath $LogFile -Append -Encoding UTF8
-Write-Output ($logLines -join "`n")
+$logText = $logLines -join "`n"
+$logText | Out-File -FilePath $LogFile -Append -Encoding UTF8
+Write-Output $logText

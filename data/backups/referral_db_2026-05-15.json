@@ -18,9 +18,19 @@
       "total": "0.000000 USDT",
       "withdrawable": "0.000000 USDT",
       "month": "0.000000 USDT",
-      "friends": 1
+      "friends": 2
     },
     "commissions": [
+      {
+        "id": "comm-1778860395927-wlqt5l",
+        "referee": "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg",
+        "betAmount": "0.020000",
+        "fee": "0.001600",
+        "commission": "0.000480",
+        "timestamp": "2026-05-15T15:53:15.927Z",
+        "status": "pending",
+        "signature": "2jxsuMwvczFu61mJWAsDwHixTYXkZtJGxmjd7DyCbsWPXhf6afB26x9wm9SNMPbN126mXq1eF4V9w3L1LQ2FsDDP"
+      },
       {
         "id": "comm-1778010648192-9pglko",
         "referee": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
@@ -381,6 +391,14 @@
       }
     ],
     "referees": [
+      {
+        "id": "ref-auto-1778860381482",
+        "address": "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg",
+        "joinDateValue": 0,
+        "totalVolumeValue": 0,
+        "earnedCommissionValue": 0,
+        "rewardIssued": false
+      },
       {
         "id": "ref-new-1776791794973",
         "address": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",

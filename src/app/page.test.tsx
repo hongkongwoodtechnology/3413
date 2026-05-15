@@ -32,6 +32,9 @@ jest.mock("@solana/wallet-adapter-react", () => ({
     wallet: null,
     sendTransaction: jest.fn(),
   }),
+  useConnection: () => ({
+    connection: {},
+  }),
 }));
 
 jest.mock("@/components/LanguageProvider", () => ({

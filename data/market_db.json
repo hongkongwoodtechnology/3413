@@ -117,6 +117,29 @@
       "home": 0,
       "draw": 0,
       "away": 0
+    },
+    "refundProcessed": true,
+    "adminSurplus": 0,
+    "settled": true,
+    "finalWinner": "away",
+    "finalScore": "0-2"
+  },
+  "1775290": {
+    "realTotalPool": 0.02,
+    "liabilities": {
+      "home": 0.037000000000000005,
+      "draw": 0,
+      "away": 0
+    },
+    "pools": {
+      "home": 0.02,
+      "draw": 0,
+      "away": 0
+    },
+    "attractionWindowUsed": {
+      "home": 0,
+      "draw": 0,
+      "away": 0
     }
   }
 }

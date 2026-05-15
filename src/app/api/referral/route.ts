@@ -312,71 +312,80 @@ export async function POST(request: Request) {
             if (referrerAddress && referrerAddress !== userAddress) {
                 const referrerData = getOrCreateUserData(referrerAddress, db);
                 
-                // 尋找對應的 referee 記錄並更新
-                const refereeIndex = referrerData.referees.findIndex(r => r.address === userAddress);
-                if (refereeIndex !== -1) {
-                    const verification = await verifySplitTransfer({
-                        signature,
-                        userAddress,
-                        poolAmount: actualPool,
-                        houseAmount: actualHouse,
-                        commissionAmount: actualCommission
+                let refereeIndex = referrerData.referees.findIndex(r => r.address === userAddress);
+                
+                if (refereeIndex === -1) {
+                    referrerData.referees.unshift({
+                        id: `ref-auto-${Date.now()}`,
+                        address: userAddress,
+                        joinDateValue: 0,
+                        totalVolumeValue: 0,
+                        earnedCommissionValue: 0,
+                        rewardIssued: false
                     });
-                    
-                    if (!verification.ok) {
-                        referrerData.commissions.unshift({
-                            id: `comm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                            referee: userAddress,
-                            betAmount: Number(betAmount).toFixed(6),
-                            fee: (actualHouse + actualCommission).toFixed(6),
-                            commission: actualCommission.toFixed(6),
-                            timestamp: new Date().toISOString(),
-                            status: 'pending' as const,
-                            signature
-                        });
-                        saveDatabase(db);
-                        return NextResponse.json({ success: false, error: verification.error });
-                    }
-                    
-                    const ref = referrerData.referees[refereeIndex];
-                    ref.totalVolumeValue += betAmount;
-                    
-                    // 使用鏈上實際佣金金額（已透過 SPL Transfer 發送到 COMMISSION_WALLET）
-                    const commissionEarned = actualCommission;
-                    const platformFee = actualHouse + actualCommission;
-                    
-                    ref.earnedCommissionValue += commissionEarned;
-                    
-                    // 建立佣金記錄（含鏈上拆分明細）
+                    referrerData.stats.friends += 1;
+                    refereeIndex = 0;
+                    console.log(`[REFERRAL REPAIR] Auto-added ${userAddress} to referrer ${referrerAddress} referees list`);
+                }
+                
+                const verification = await verifySplitTransfer({
+                    signature,
+                    userAddress,
+                    poolAmount: actualPool,
+                    houseAmount: actualHouse,
+                    commissionAmount: actualCommission
+                });
+                
+                if (!verification.ok) {
                     referrerData.commissions.unshift({
                         id: `comm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
                         referee: userAddress,
-                        betAmount: betAmount.toFixed(6),
-                        fee: platformFee.toFixed(6),
-                        commission: commissionEarned.toFixed(6),
+                        betAmount: Number(betAmount).toFixed(6),
+                        fee: (actualHouse + actualCommission).toFixed(6),
+                        commission: actualCommission.toFixed(6),
                         timestamp: new Date().toISOString(),
-                        status: 'settled' as const,
+                        status: 'pending' as const,
                         signature
                     });
-                    
-                    // 更新推薦人的 stats（可提現佣金來自 COMMISSION_WALLET）
-                    const prevTotal = parseFloat(referrerData.stats.total) || 0;
-                    const prevMonth = parseFloat(referrerData.stats.month) || 0;
-                    const prevWithdrawable = parseFloat(referrerData.stats.withdrawable) || 0;
-                    
-                    referrerData.stats.total = (prevTotal + commissionEarned).toFixed(6) + ' USDT';
-                    referrerData.stats.withdrawable = (prevWithdrawable + commissionEarned).toFixed(6) + ' USDT';
-                    referrerData.stats.month = (prevMonth + commissionEarned).toFixed(6) + ' USDT';
-                    
-                    console.log(`[COMMISSION] ✅ ${commissionEarned.toFixed(6)} USDT verified on-chain | Referrer: ${referrerAddress} | Bettor: ${userAddress} | Bet: ${betAmount} USDT`);
-                    
-                    // 檢查是否達到 1000U 門檻且尚未發放獎勵
-                    if (ref.totalVolumeValue >= 1000 && !ref.rewardIssued) {
-                        userData.balances.bonus += 100;
-                        ref.rewardIssued = true;
-                        console.log(`[REWARD ISSUED] 100U Bonus issued to ${userAddress} for reaching 1000U volume (Referred by ${referrerAddress})`);
-                    }
+                    saveDatabase(db);
+                    return NextResponse.json({ success: false, error: verification.error });
                 }
+                
+                const ref = referrerData.referees[refereeIndex];
+                ref.totalVolumeValue += betAmount;
+                
+                const commissionEarned = actualCommission;
+                const platformFee = actualHouse + actualCommission;
+                
+                ref.earnedCommissionValue += commissionEarned;
+                
+                referrerData.commissions.unshift({
+                    id: `comm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                    referee: userAddress,
+                    betAmount: betAmount.toFixed(6),
+                    fee: platformFee.toFixed(6),
+                    commission: commissionEarned.toFixed(6),
+                    timestamp: new Date().toISOString(),
+                    status: 'settled' as const,
+                    signature
+                });
+                
+                const prevTotal = parseFloat(referrerData.stats.total) || 0;
+                const prevMonth = parseFloat(referrerData.stats.month) || 0;
+                const prevWithdrawable = parseFloat(referrerData.stats.withdrawable) || 0;
+                
+                referrerData.stats.total = (prevTotal + commissionEarned).toFixed(6) + ' USDT';
+                referrerData.stats.withdrawable = (prevWithdrawable + commissionEarned).toFixed(6) + ' USDT';
+                referrerData.stats.month = (prevMonth + commissionEarned).toFixed(6) + ' USDT';
+                
+                console.log(`[COMMISSION] ✅ ${commissionEarned.toFixed(6)} USDT verified on-chain | Referrer: ${referrerAddress} | Bettor: ${userAddress} | Bet: ${betAmount} USDT`);
+                
+                if (ref.totalVolumeValue >= 1000 && !ref.rewardIssued) {
+                    userData.balances.bonus += 100;
+                    ref.rewardIssued = true;
+                    console.log(`[REWARD ISSUED] 100U Bonus issued to ${userAddress} for reaching 1000U volume (Referred by ${referrerAddress})`);
+                }
+                
                 saveDatabase(db);
             } else {
                  // 沒有推薦人 (獨立開戶)，不進行任何體驗金的累計與發放
