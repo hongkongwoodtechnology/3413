@@ -192,6 +192,16 @@ export async function POST(request: Request) {
         const currentTotalReal = currentPools.home + currentPools.draw + currentPools.away;
         const isFeeFundedCold = currentTotalReal < 0.50;
 
+        if (useBonus && currentTotalReal <= 0) {
+            return NextResponse.json(
+                {
+                    error: '體驗金不可作為該場賭池首注，請等待真實資金先建立賭池。',
+                    code: 'risk_trial_funds_first_bet_blocked',
+                },
+                { status: 403 }
+            );
+        }
+
         if (useBonus) {
             const trialFundsUsed = getTrialFundsUsageForMatch(db, matchId);
             const trialFundsCap = Number((currentTotalReal * TRIAL_FUNDS_CAP_RATIO).toFixed(6));
