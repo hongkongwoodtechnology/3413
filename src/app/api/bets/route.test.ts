@@ -34,13 +34,20 @@ jest.mock('@/lib/reserve', () => ({
   loadReserve: jest.fn(() => ({ balance: 1000 })),
 }));
 
-describe('bets POST', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    (fs.readFileSync as jest.Mock).mockImplementation((file: string) => {
-      if (String(file).includes('bets_db.json')) return '{}';
-      if (String(file).includes('market_db.json')) {
-        return JSON.stringify({
+function mockDatabases({
+  betsDb = {},
+  marketDb,
+}: {
+  betsDb?: Record<string, unknown>;
+  marketDb?: Record<string, unknown>;
+}) {
+  (fs.readFileSync as jest.Mock).mockImplementation((file: string) => {
+    if (String(file).includes('bets_db.json')) {
+      return JSON.stringify(betsDb);
+    }
+    if (String(file).includes('market_db.json')) {
+      return JSON.stringify(
+        marketDb ?? {
           '101': {
             realTotalPool: 250,
             liabilities: { home: 0, draw: 0, away: 0 },
@@ -55,10 +62,17 @@ describe('bets POST', () => {
             initialOdds: { home: 1.88, draw: 3.4, away: 4.7 },
             attractionWindowUsed: { home: 0, draw: 0, away: 0 },
           },
-        });
-      }
-      return '{}';
-    });
+        }
+      );
+    }
+    return '{}';
+  });
+}
+
+describe('bets POST', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockDatabases({});
   });
 
   it('stores trial-funds bets with the submitted locked odds and net payout', async () => {
@@ -140,6 +154,183 @@ describe('bets POST', () => {
     expect(json.data.useBonus).toBe(true);
     expect(json.data.odds).toBe(1.88);
     expect(json.data.netPayout).toBe(9.4);
+  });
+
+  it('accepts a trial-funds bet when cumulative match usage stays within the 15% cap', async () => {
+    mockDatabases({
+      betsDb: {
+        'existing-trial-user': [
+          {
+            id: 'bet-existing-1',
+            userAddress: 'existing-trial-user',
+            matchId: 101,
+            matchName: 'A vs B',
+            outcome: 'draw',
+            amount: 30,
+            odds: 3.4,
+            netPayout: 102,
+            status: 'pending',
+            useBonus: true,
+            timestamp: 1234567000,
+          },
+        ],
+      },
+    });
+
+    const req = new Request('http://localhost/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: 'trial-user-under-cap',
+        matchId: 101,
+        matchName: 'A vs B',
+        outcome: 'home',
+        amount: 7,
+        odds: 2.15,
+        useBonus: true,
+        timestamp: 1234567895,
+        liveMinute: 12,
+      }),
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.data.useBonus).toBe(true);
+  });
+
+  it('rejects a trial-funds bet when cumulative match usage exceeds the 15% cap', async () => {
+    mockDatabases({
+      betsDb: {
+        'existing-trial-user': [
+          {
+            id: 'bet-existing-1',
+            userAddress: 'existing-trial-user',
+            matchId: 101,
+            matchName: 'A vs B',
+            outcome: 'draw',
+            amount: 30,
+            odds: 3.4,
+            netPayout: 102,
+            status: 'pending',
+            useBonus: true,
+            timestamp: 1234567000,
+          },
+        ],
+      },
+    });
+
+    const req = new Request('http://localhost/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: 'trial-user-over-cap',
+        matchId: 101,
+        matchName: 'A vs B',
+        outcome: 'home',
+        amount: 8,
+        odds: 2.15,
+        useBonus: true,
+        timestamp: 1234567896,
+        liveMinute: 12,
+      }),
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(json.code).toBe('risk_trial_funds_cap');
+    expect(json.trialFundsCap).toBe(37.5);
+    expect(json.trialFundsUsed).toBe(30);
+    expect(json.trialFundsRemaining).toBe(7.5);
+    expect(json.error).toContain('體驗金超出單場上限');
+  });
+
+  it('does not apply the trial-funds cap to real-money bets', async () => {
+    mockDatabases({
+      betsDb: {
+        'existing-trial-user': [
+          {
+            id: 'bet-existing-1',
+            userAddress: 'existing-trial-user',
+            matchId: 101,
+            matchName: 'A vs B',
+            outcome: 'draw',
+            amount: 30,
+            odds: 3.4,
+            netPayout: 102,
+            status: 'pending',
+            useBonus: true,
+            timestamp: 1234567000,
+          },
+        ],
+      },
+    });
+
+    const req = new Request('http://localhost/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: 'real-money-user',
+        matchId: 101,
+        matchName: 'A vs B',
+        outcome: 'home',
+        amount: 8,
+        odds: 2.15,
+        useBonus: false,
+        timestamp: 1234567897,
+        liveMinute: 12,
+      }),
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.data.useBonus).toBe(false);
+  });
+
+  it('rejects positive trial-funds bets when the match has no existing pool', async () => {
+    mockDatabases({
+      marketDb: {
+        '303': {
+          realTotalPool: 0,
+          liabilities: { home: 0, draw: 0, away: 0 },
+          pools: { home: 0, draw: 0, away: 0 },
+          initialOdds: { home: 2.1, draw: 3.2, away: 3.6 },
+          attractionWindowUsed: { home: 0, draw: 0, away: 0 },
+        },
+      },
+    });
+
+    const req = new Request('http://localhost/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: 'trial-user-zero-pool',
+        matchId: 303,
+        matchName: 'Zero Pool Match',
+        outcome: 'home',
+        amount: 1,
+        odds: 2.1,
+        useBonus: true,
+        timestamp: 1234567898,
+        liveMinute: 12,
+      }),
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(json.code).toBe('risk_trial_funds_cap');
+    expect(json.trialFundsCap).toBe(0);
+    expect(json.trialFundsUsed).toBe(0);
+    expect(json.trialFundsRemaining).toBe(0);
   });
 
   it('persists attraction-window usage for early cold underdog bets', async () => {
