@@ -27,7 +27,7 @@ const NewsCenterPage = dynamic(() => import("@/components/NewsCenterPage").then(
 import { Suspense } from "react"
 import { PublicKey, Transaction, TransactionInstruction, ComputeBudgetProgram, SystemProgram } from "@solana/web3.js"
 import { getUSDTBalance, getTrialUSDTBalance, findAta as findAtaClient } from "@/lib/solana"
-import { HOUSE_WALLET, COMMISSION_WALLET, USDT_MINT, USDT_DECIMALS, PLATFORM_FEE_RATE, DEFAULT_COMMISSION_RATE, splitBetAmount, POOL_ADDRESS, formatMissingAtaInitializationMessage, resolvePreferredWalletAddress } from "@/lib/wallets"
+import { HOUSE_WALLET, COMMISSION_WALLET, USDT_MINT, USDT_DECIMALS, PLATFORM_FEE_RATE, DEFAULT_COMMISSION_RATE, splitBetAmount, POOL_ADDRESS, formatMissingAtaInitializationMessage, getBoundReferrerStorageKey, resolvePreferredWalletAddress } from "@/lib/wallets"
 import { getReturnRateForBetMode } from "@/lib/bet-mode"
 import { countActiveOutcomes } from "@/lib/market-rules"
 import { TEAM_NAMES, LEAGUES } from "@/lib/dictionaries"
@@ -420,7 +420,7 @@ export default function Home() {
         return;
       }
       try {
-        const storedReferrer = localStorage.getItem(`bound_referrer_${address}`);
+        const storedReferrer = localStorage.getItem(getBoundReferrerStorageKey(address));
         if (storedReferrer) {
           const refRes = await fetch(`/api/referral?address=${storedReferrer}`);
           if (refRes.ok) {
@@ -1028,7 +1028,9 @@ export default function Home() {
 
           // Notify Referral API to process potential bonus (Only for real money bets)
           if (!useBonus) {
-              const storedReferrer = localStorage.getItem(`bound_referrer_${currentAddress}`);
+              const storedReferrer = localStorage.getItem(
+                getBoundReferrerStorageKey(currentAddress)
+              );
               fetch('/api/referral', {
                   method: 'POST',
                   body: JSON.stringify({

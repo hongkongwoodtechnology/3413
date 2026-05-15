@@ -7,13 +7,16 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import AdminLayout from './layout';
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
+import { LanguageProvider } from '@/components/LanguageProvider';
 
 describe('Admin layout shell', () => {
   it('shows the five unified admin navigation modules', () => {
     render(
-      <AdminLayout>
-        <div>admin content</div>
-      </AdminLayout>
+      <LanguageProvider initialLocale="en">
+        <AdminLayout>
+          <div>admin content</div>
+        </AdminLayout>
+      </LanguageProvider>
     );
 
     expect(screen.getByText('總覽')).toBeInTheDocument();

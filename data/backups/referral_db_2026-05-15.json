@@ -15,12 +15,52 @@
   },
   "FhehP5xXeHrMSFZkti2vAXDm4ZJeqXNu3vARGCTV8pkf": {
     "stats": {
-      "total": "0.000000 USDT",
+      "total": "0.381120 USDT",
       "withdrawable": "0.000000 USDT",
-      "month": "0.000000 USDT",
+      "month": "0.381120 USDT",
       "friends": 2
     },
     "commissions": [
+      {
+        "id": "comm-1778873629530-x16pqg",
+        "referee": "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg",
+        "betAmount": "0.030000",
+        "fee": "0.002400",
+        "commission": "0.000720",
+        "timestamp": "2026-05-15T19:33:49.530Z",
+        "status": "pending",
+        "signature": "3zTQfjXHf8m5AR3e6xMwA3RWnAvNF5SwMH2TLxRPZ7Fh92ZXmTzJWcMv7wNy1exbYFuUjuRUvFCJF748JmSTDNVP"
+      },
+      {
+        "id": "comm-1778873588700-7o7b07",
+        "referee": "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg",
+        "betAmount": "0.010000",
+        "fee": "0.000800",
+        "commission": "0.000240",
+        "timestamp": "2026-05-15T19:33:08.700Z",
+        "status": "pending",
+        "signature": "2QUckDznPf3KCz41VJVsMxCCMcMgGh9XyjMcTfxpMXSJi6UBWqpDpZKnTsSJRroR8NAVwTxbQ7axvdp5gsRZuqmk"
+      },
+      {
+        "id": "comm-1778868400235-qsjbf2",
+        "referee": "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg",
+        "betAmount": "0.030000",
+        "fee": "0.002400",
+        "commission": "0.000720",
+        "timestamp": "2026-05-15T18:06:40.235Z",
+        "status": "pending",
+        "signature": "361b9jfZn1XF425zhCBu1mXsRTV2EHkMxR4PkEoA9V9v9dsHN2bLWJTapcLHkV9i9cQqrowUAa8kvJjafrQTGP2U"
+      },
+      {
+        "id": "comm-1778868356488-3q1xta",
+        "referee": "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg",
+        "betAmount": "0.020000",
+        "fee": "0.001600",
+        "commission": "0.000480",
+        "timestamp": "2026-05-15T18:05:56.488Z",
+        "status": "pending",
+        "signature": "52a683sYDSeGB8nunCp6BpEw7jTtWA3sWF95Smj9sAPAwZe7suQRoaMBYxExtXRvRTVBPAwY8vq7G1bn32HNEdwg"
+      },
       {
         "id": "comm-1778860395927-wlqt5l",
         "referee": "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg",
@@ -469,7 +509,7 @@
       "total": "0.000000 USDT",
       "withdrawable": "0.000000 USDT",
       "month": "0.000000 USDT",
-      "friends": 4
+      "friends": 3
     },
     "commissions": [],
     "referees": [
@@ -496,19 +536,11 @@
         "totalVolumeValue": 0,
         "earnedCommissionValue": 0,
         "rewardIssued": false
-      },
-      {
-        "id": "ref-new-1778854100000",
-        "address": "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg",
-        "joinDateValue": 0,
-        "totalVolumeValue": 0,
-        "earnedCommissionValue": 0,
-        "rewardIssued": false
       }
     ],
     "balances": {
       "usdt": 0,
-      "bonus": 0
+      "bonus": 300
     }
   },
   "9CC3oeJ22u7gkFV5sZTtGDBMfgzZSwpppwSrGF2ddQTq": {
@@ -520,6 +552,253 @@
     },
     "commissions": [],
     "referees": [],
+    "balances": {
+      "usdt": 0,
+      "bonus": 0
+    }
+  },
+  "3veQRXa6347BofJAAGYrFuw2125E17P2LgAozCo7hXc2": {
+    "stats": {
+      "total": "0.000000 USDT",
+      "withdrawable": "0.000000 USDT",
+      "month": "0.000000 USDT",
+      "friends": 0
+    },
+    "commissions": [],
+    "referees": [],
+    "balances": {
+      "usdt": 0,
+      "bonus": 0
+    }
+  },
+  "0xTest123": {
+    "stats": {
+      "total": "0.000000 USDT",
+      "withdrawable": "0.000000 USDT",
+      "month": "0.000000 USDT",
+      "friends": 2
+    },
+    "commissions": [],
+    "referees": [
+      {
+        "id": "ref-new-1778869479585",
+        "address": "0xNewUser456",
+        "joinDateValue": 0,
+        "totalVolumeValue": 0,
+        "earnedCommissionValue": 0,
+        "rewardIssued": false
+      },
+      {
+        "id": "ref-new-1778869399676",
+        "address": "0xNewUser456",
+        "joinDateValue": 0,
+        "totalVolumeValue": 0,
+        "earnedCommissionValue": 0,
+        "rewardIssued": false
+      }
+    ],
+    "balances": {
+      "usdt": 0,
+      "bonus": 0
+    }
+  },
+  "0xReferrer": {
+    "stats": {
+      "total": "0 USDT",
+      "withdrawable": "0 USDT",
+      "month": "0 USDT",
+      "friends": 2
+    },
+    "commissions": [],
+    "referees": [
+      {
+        "id": "ref-new-1778869479614",
+        "address": "0xRefereeThreshold",
+        "joinDateValue": 0,
+        "totalVolumeValue": 0,
+        "earnedCommissionValue": 0,
+        "rewardIssued": false
+      },
+      {
+        "id": "ref-new-1778869399689",
+        "address": "0xRefereeThreshold",
+        "joinDateValue": 0,
+        "totalVolumeValue": 0,
+        "earnedCommissionValue": 0,
+        "rewardIssued": false
+      }
+    ],
+    "balances": {
+      "usdt": 0,
+      "bonus": 0
+    }
+  },
+  "0xRefereeThreshold": {
+    "stats": {
+      "total": "0.000000 USDT",
+      "withdrawable": "0.000000 USDT",
+      "month": "0.000000 USDT",
+      "friends": 0
+    },
+    "commissions": [],
+    "referees": [],
+    "balances": {
+      "usdt": 0,
+      "bonus": 0
+    }
+  },
+  "0xIndependentUser": {
+    "stats": {
+      "total": "0.000000 USDT",
+      "withdrawable": "0.000000 USDT",
+      "month": "0.000000 USDT",
+      "friends": 0
+    },
+    "commissions": [],
+    "referees": [],
+    "balances": {
+      "usdt": 0,
+      "bonus": 0
+    }
+  },
+  "0xLegacyTarget": {
+    "stats": {
+      "total": "0 USDT",
+      "withdrawable": "0 USDT",
+      "month": "0 USDT",
+      "friends": 0
+    },
+    "commissions": [],
+    "referees": [],
+    "balances": {
+      "usdt": 0,
+      "bonus": 5
+    }
+  },
+  "0xLeaderReferrer": {
+    "stats": {
+      "total": "0 USDT",
+      "withdrawable": "0 USDT",
+      "month": "0 USDT",
+      "friends": 3
+    },
+    "commissions": [],
+    "referees": [
+      {
+        "id": "ref-new-1778869627753",
+        "address": "0xLeaderUser",
+        "joinDateValue": 0,
+        "totalVolumeValue": 0,
+        "earnedCommissionValue": 0,
+        "rewardIssued": false
+      },
+      {
+        "id": "ref-new-1778869482139",
+        "address": "0xLeaderUser",
+        "joinDateValue": 0,
+        "totalVolumeValue": 0,
+        "earnedCommissionValue": 0,
+        "rewardIssued": false
+      },
+      {
+        "id": "ref-new-1778869402374",
+        "address": "0xLeaderUser",
+        "joinDateValue": 0,
+        "totalVolumeValue": 0,
+        "earnedCommissionValue": 0,
+        "rewardIssued": false
+      }
+    ],
+    "balances": {
+      "usdt": 0,
+      "bonus": 0
+    }
+  },
+  "0xBonusTarget": {
+    "stats": {
+      "total": "0 USDT",
+      "withdrawable": "0 USDT",
+      "month": "0 USDT",
+      "friends": 0
+    },
+    "commissions": [],
+    "referees": [],
+    "balances": {
+      "usdt": 0,
+      "bonus": 50
+    }
+  },
+  "xDjJ8pKn7iTnhQun1uofMg8GaHAmchDq3iW3tfwcd3C": {
+    "stats": {
+      "total": "0.000000 USDT",
+      "withdrawable": "0.000000 USDT",
+      "month": "0.000000 USDT",
+      "friends": 1
+    },
+    "commissions": [],
+    "referees": [
+      {
+        "id": "ref-new-1778871681952",
+        "address": "7yRC3SRzbyaqcYrxU11e7XVJkey5K3vnw84PJfoiXQRp",
+        "joinDateValue": 0,
+        "totalVolumeValue": 0,
+        "earnedCommissionValue": 0,
+        "rewardIssued": false
+      }
+    ],
+    "balances": {
+      "usdt": 0,
+      "bonus": 100
+    }
+  },
+  "7yRC3SRzbyaqcYrxU11e7XVJkey5K3vnw84PJfoiXQRp": {
+    "stats": {
+      "total": "0.000000 USDT",
+      "withdrawable": "0.000000 USDT",
+      "month": "0.000000 USDT",
+      "friends": 0
+    },
+    "commissions": [],
+    "referees": [],
+    "balances": {
+      "usdt": 0,
+      "bonus": 0
+    }
+  },
+  "AQDd735nBNxWxoeNAG7bUn2SA56fennrCYRR1Ykc4fyq\\": {
+    "stats": {
+      "total": "0.000000 USDT",
+      "withdrawable": "0.000000 USDT",
+      "month": "0.000000 USDT",
+      "friends": 3
+    },
+    "commissions": [],
+    "referees": [
+      {
+        "id": "ref-new-1778874191656",
+        "address": "xDjJ8pKn7iTnhQun1uofMg8GaHAmchDq3iW3tfwcd3C",
+        "joinDateValue": 0,
+        "totalVolumeValue": 0,
+        "earnedCommissionValue": 0,
+        "rewardIssued": false
+      },
+      {
+        "id": "ref-new-1778874185926",
+        "address": "Hc4e65ugDEyHfb3RVLiMHWwn9V5VmKYAQ6ET2T5CPAoS",
+        "joinDateValue": 0,
+        "totalVolumeValue": 0,
+        "earnedCommissionValue": 0,
+        "rewardIssued": false
+      },
+      {
+        "id": "ref-new-1778874131372",
+        "address": "AQDd735nBNxWxoeNAG7bUn2SA56fennrCYRR1Ykc4fyq",
+        "joinDateValue": 0,
+        "totalVolumeValue": 0,
+        "earnedCommissionValue": 0,
+        "rewardIssued": false
+      }
+    ],
     "balances": {
       "usdt": 0,
       "bonus": 0

@@ -1,29 +1,73 @@
-import Link from 'next/link';
-
-type OverviewShortcutItem = {
-  label: string;
+type ShortcutItem = {
+  title: string;
+  description: string;
+  icon: string;
   href: string;
 };
 
 type OverviewShortcutsProps = {
-  items: OverviewShortcutItem[];
+  shortcuts?: ShortcutItem[];
 };
 
-export function OverviewShortcuts({ items }: OverviewShortcutsProps) {
+export function OverviewShortcuts({ shortcuts = defaultShortcuts }: OverviewShortcutsProps) {
   return (
-    <div className="rounded-3xl border border-neutral-800 bg-neutral-900/70 p-5">
-      <div className="mb-4 text-lg font-bold text-white">快捷入口</div>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {items.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="rounded-2xl border border-neutral-800 bg-neutral-950/80 px-4 py-3 text-sm font-medium text-neutral-300 transition-colors hover:border-primary-purple/30 hover:bg-neutral-800 hover:text-white"
-          >
-            {item.label}
-          </Link>
-        ))}
-      </div>
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {shortcuts.map((shortcut) => (
+        <a
+          key={shortcut.title}
+          href={shortcut.href}
+          className="group rounded-3xl border border-neutral-800 bg-neutral-900/70 p-5 transition-colors hover:border-neutral-700 hover:bg-neutral-900"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-neutral-800 group-hover:bg-neutral-700">
+              <span className="text-lg">{shortcut.icon}</span>
+            </div>
+            <div>
+              <div className="text-base font-bold text-white">{shortcut.title}</div>
+              <p className="mt-1 text-sm text-neutral-400">{shortcut.description}</p>
+            </div>
+          </div>
+        </a>
+      ))}
     </div>
   );
 }
+
+const defaultShortcuts: ShortcutItem[] = [
+  {
+    title: '市場管理',
+    description: '查看和編輯體育市場',
+    icon: '📊',
+    href: '/admin/markets',
+  },
+  {
+    title: '財務報表',
+    description: '查看收入和支出報告',
+    icon: '💰',
+    href: '/admin/finance',
+  },
+  {
+    title: '用戶管理',
+    description: '管理用戶帳戶和權限',
+    icon: '👥',
+    href: '/admin/users',
+  },
+  {
+    title: '分析儀表板',
+    description: '查看平台數據分析',
+    icon: '📈',
+    href: '/admin/analytics',
+  },
+  {
+    title: '安全日誌',
+    description: '審計系統安全事件',
+    icon: '🔒',
+    href: '/admin/secure-audit-logs',
+  },
+  {
+    title: '系統設置',
+    description: '配置平台參數',
+    icon: '⚙️',
+    href: '/admin/settings',
+  },
+];

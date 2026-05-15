@@ -69,19 +69,10 @@ export default function ReferralPage() {
             const res = await fetch(`/api/referral?address=${publicKey.toBase58()}`);
             if (!res.ok) throw new Error('Failed to fetch referral data');
             const { data } = await res.json();
-            
-            // Format data with getters like previous mock
-            const formattedReferees = data.referees.map((ref: any) => ({
-                ...ref,
-                get joinDate() { return ref.joinDateValue === 0 ? 'Just now' : `${ref.joinDateValue} days ago` },
-                get totalVolume() { return `${ref.totalVolumeValue.toFixed(2)} USDT` },
-                get earnedCommission() { return `${ref.earnedCommissionValue.toFixed(2)} USDT` }
-            }));
-
             setReferralData({
                 stats: data.stats,
                 commissions: data.commissions,
-                referees: formattedReferees,
+                referees: data.referees,
                 balances: data.balances || { usdt: 0, bonus: 0 },
                 commissionRate: data.commissionRate ?? 0.3,
             });
@@ -131,7 +122,44 @@ export default function ReferralPage() {
     const showReserveWarning = totalCommissionValue > 0 && withdrawableCommissionValue === 0;
 
     const commissions = referralData?.commissions || [];
-    const allReferees = referralData?.referees || [];
+    const visibleCommissions = React.useMemo(
+        () => commissions.filter((commission) => commission.referee !== 'WITHDRAWAL'),
+        [commissions]
+    );
+    const refereeLedgerTotals = React.useMemo(() => {
+        const totals = new Map<string, { totalVolumeValue: number; earnedCommissionValue: number }>();
+
+        for (const commission of visibleCommissions) {
+            const current = totals.get(commission.referee) || {
+                totalVolumeValue: 0,
+                earnedCommissionValue: 0,
+            };
+
+            current.totalVolumeValue += parseUsdtDisplay(commission.betAmount);
+            current.earnedCommissionValue += parseUsdtDisplay(commission.commission);
+            totals.set(commission.referee, current);
+        }
+
+        return totals;
+    }, [visibleCommissions]);
+    const allReferees = React.useMemo(() => {
+        return (referralData?.referees || []).map((ref: any) => {
+            const derived = refereeLedgerTotals.get(ref.address);
+            const totalVolumeValue =
+                ref.totalVolumeValue > 0 ? ref.totalVolumeValue : derived?.totalVolumeValue ?? 0;
+            const earnedCommissionValue =
+                ref.earnedCommissionValue > 0 ? ref.earnedCommissionValue : derived?.earnedCommissionValue ?? 0;
+
+            return {
+                ...ref,
+                totalVolumeValue,
+                earnedCommissionValue,
+                joinDate: ref.joinDateValue === 0 ? 'Just now' : `${ref.joinDateValue} days ago`,
+                totalVolume: `${totalVolumeValue.toFixed(2)} USDT`,
+                earnedCommission: `${earnedCommissionValue.toFixed(2)} USDT`,
+            };
+        });
+    }, [referralData?.referees, refereeLedgerTotals]);
 
     // Apply sorting
     const sortedReferees = React.useMemo(() => {
@@ -235,8 +263,8 @@ export default function ReferralPage() {
     const cutoff = timeCutoffs[timeFilter] || 0;
 
     const filteredCommissions = (activeTab === 'all' 
-        ? commissions 
-        : commissions.filter(c => c.status === activeTab)
+        ? visibleCommissions 
+        : visibleCommissions.filter(c => c.status === activeTab)
     ).filter(c => cutoff === 0 || new Date(c.timestamp).getTime() >= cutoff);
 
     const totalPages = Math.max(1, Math.ceil(filteredCommissions.length / commissionsPerPage));
@@ -474,12 +502,20 @@ export default function ReferralPage() {
                                                     <div className={`h-2.5 w-2.5 rounded-full ${comm.status === 'settled' ? 'bg-success' : 'bg-neutral-500'}`} />
                                                     <div>
                                                         <div className="text-base font-bold text-white font-mono">{comm.referee.length > 12 ? comm.referee.slice(0, 4) + '...' + comm.referee.slice(-4) : comm.referee}</div>
-                                                        <div className="text-sm text-neutral-500">{comm.timestamp}</div>
+                                                        <div className="text-sm text-neutral-500 flex flex-wrap items-center gap-2">
+                                                            <span>{comm.timestamp}</span>
+                                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${comm.status === 'settled' ? 'bg-success/15 text-success' : 'bg-neutral-700 text-neutral-300'}`}>
+                                                                {t(`referral.tab.${comm.status}`)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-sm text-neutral-400 mt-1">
+                                                            {t('referral.history.bet_amount')}: {comm.betAmount} USDT
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <div className="text-lg font-bold text-success">+{comm.commission}</div>
-                                                    <div className="text-sm text-neutral-500">Fee: {comm.fee}</div>
+                                                    <div className="text-lg font-bold text-success">+{comm.commission} USDT</div>
+                                                    <div className="text-sm text-neutral-500">Fee: {comm.fee} USDT</div>
                                                 </div>
                                             </div>
                                         ))

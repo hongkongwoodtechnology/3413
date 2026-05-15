@@ -36,6 +36,7 @@ jest.mock('@/components/LanguageProvider', () => ({
         'referral.stat.friends': '成功邀请人数',
         'referral.history.title': '近期佣金动态',
         'referral.history.empty': '暂无佣金，快邀请好友一起预测吧！',
+        'referral.history.bet_amount': '投注金额',
         'referral.tab.all': '全部',
         'referral.tab.settled': '已结算',
         'referral.tab.pending': '待结算',
@@ -56,24 +57,63 @@ jest.mock('@/components/LocalizedLink', () => ({
   LocalizedLink: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+const buildReferralPayload = (overrides?: Partial<any>) => ({
+  stats: {
+    total: '0.382080 USDT',
+    withdrawable: '0.000000 USDT',
+    month: '0.382080 USDT',
+    friends: 1,
+  },
+  commissions: [
+    {
+      id: 'comm-pending-1',
+      referee: '6fPendingRefereeABCDEFGH123456789',
+      betAmount: '5.000000',
+      fee: '0.400000',
+      commission: '0.120000',
+      timestamp: '2026-05-16T08:00:00.000Z',
+      status: 'pending',
+    },
+    {
+      id: 'comm-settled-1',
+      referee: '6fPendingRefereeABCDEFGH123456789',
+      betAmount: '2.000000',
+      fee: '0.160000',
+      commission: '0.048000',
+      timestamp: '2026-05-15T08:00:00.000Z',
+      status: 'settled',
+    },
+    {
+      id: 'wd-hidden-1',
+      referee: 'WITHDRAWAL',
+      betAmount: '0.000000',
+      fee: '0.050000',
+      commission: '-0.050000',
+      timestamp: '2026-05-14T08:00:00.000Z',
+      status: 'settled',
+    },
+  ],
+  referees: [
+    {
+      id: 'ref-1',
+      address: '6fPendingRefereeABCDEFGH123456789',
+      joinDateValue: 0,
+      totalVolumeValue: 0,
+      earnedCommissionValue: 0,
+    },
+  ],
+  balances: { usdt: 0, bonus: 0 },
+  commissionRate: 0.3,
+  ...overrides,
+});
+
 global.fetch = jest.fn(async (input: RequestInfo | URL) => {
   const url = String(input);
   if (url.includes('/api/referral?address=')) {
     return {
       ok: true,
       json: async () => ({
-        data: {
-          stats: {
-            total: '0.382080 USDT',
-            withdrawable: '0.000000 USDT',
-            month: '0.382080 USDT',
-            friends: 1,
-          },
-          commissions: [],
-          referees: [],
-          balances: { usdt: 0, bonus: 0 },
-          commissionRate: 0.3,
-        },
+        data: buildReferralPayload(),
       }),
     } as Response;
   }
@@ -132,18 +172,14 @@ describe('ReferralPage withdraw card', () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        data: {
+        data: buildReferralPayload({
           stats: {
             total: '0.382080 USDT',
             withdrawable: '0.120000 USDT',
             month: '0.382080 USDT',
             friends: 1,
           },
-          commissions: [],
-          referees: [],
-          balances: { usdt: 0, bonus: 0 },
-          commissionRate: 0.3,
-        },
+        }),
       }),
     });
 
@@ -154,5 +190,29 @@ describe('ReferralPage withdraw card', () => {
     });
 
     expect(screen.queryByText('佣金已入账，但佣金钱包余额不足，暂不可提')).not.toBeInTheDocument();
+  });
+
+  it('shows bet amount and status in commission rows while hiding withdrawal ledger rows', async () => {
+    render(<ReferralPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('投注金额: 5.000000 USDT')).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByText('待结算').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('已结算').length).toBeGreaterThan(0);
+    expect(screen.getByText('+0.120000 USDT')).toBeInTheDocument();
+    expect(screen.queryByText('-0.050000 USDT')).not.toBeInTheDocument();
+    expect(screen.queryByText('WITHDRAWAL')).not.toBeInTheDocument();
+  });
+
+  it('derives referee volume and commission from commission ledger rows when stored aggregates are zero', async () => {
+    render(<ReferralPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('7.00 USDT')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('+0.17 USDT')).toBeInTheDocument();
   });
 });

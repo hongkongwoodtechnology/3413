@@ -8,6 +8,7 @@ import { render, screen } from '@testing-library/react';
 import { OverviewKpiGrid } from './OverviewKpiGrid';
 import { OverviewAlerts } from './OverviewAlerts';
 import { OverviewShortcuts } from './OverviewShortcuts';
+import { LanguageProvider } from '@/components/LanguageProvider';
 
 describe('admin overview blocks', () => {
   it('renders KPI cards', () => {
@@ -44,19 +45,21 @@ describe('admin overview blocks', () => {
 
   it('renders shortcut links', () => {
     render(
-      <OverviewShortcuts
-        items={[
-          { label: '市場與賽事', href: '/admin/markets' },
-          { label: '財務與派彩', href: '/admin/finance' },
-          { label: '用戶與推薦', href: '/admin/users' },
-          { label: '安全與系統', href: '/admin/secure-audit-logs' },
-        ]}
-      />
+      <LanguageProvider initialLocale="en">
+        <OverviewShortcuts
+          items={[
+            { label: '市場與賽事', href: '/admin/markets' },
+            { label: '財務與派彩', href: '/admin/finance' },
+            { label: '用戶與推薦', href: '/admin/users' },
+            { label: '安全與系統', href: '/admin/secure-audit-logs' },
+          ]}
+        />
+      </LanguageProvider>
     );
 
-    expect(screen.getByRole('link', { name: '市場與賽事' })).toHaveAttribute('href', '/admin/markets');
-    expect(screen.getByRole('link', { name: '財務與派彩' })).toHaveAttribute('href', '/admin/finance');
-    expect(screen.getByRole('link', { name: '用戶與推薦' })).toHaveAttribute('href', '/admin/users');
-    expect(screen.getByRole('link', { name: '安全與系統' })).toHaveAttribute('href', '/admin/secure-audit-logs');
+    expect(screen.getByRole('link', { name: '市場與賽事' })).toHaveAttribute('href', '/en/admin/markets');
+    expect(screen.getByRole('link', { name: '財務與派彩' })).toHaveAttribute('href', '/en/admin/finance');
+    expect(screen.getByRole('link', { name: '用戶與推薦' })).toHaveAttribute('href', '/en/admin/users');
+    expect(screen.getByRole('link', { name: '安全與系統' })).toHaveAttribute('href', '/en/admin/secure-audit-logs');
   });
 });

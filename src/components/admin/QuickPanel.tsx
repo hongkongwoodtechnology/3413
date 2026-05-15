@@ -1,4 +1,6 @@
-import Link from 'next/link';
+"use client";
+
+import { LocalizedLink as Link } from "@/components/LocalizedLink";
 import { ArrowRight, ShieldCheck, TriangleAlert } from 'lucide-react';
 
 type QuickPanelCard = {

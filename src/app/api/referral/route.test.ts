@@ -1,6 +1,18 @@
+/**
+ * @jest-environment node
+ */
+
 import { GET, POST } from './route';
 
+const CURRENT_ADMIN_ADDRESS = '3veQRXa6347BofJAAGYrFuw2125E17P2LgAozCo7hXc2';
+const RETIRED_ADMIN_ADDRESS = '2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K';
+
 describe('Referral API', () => {
+    afterEach(() => {
+        delete process.env.ADMIN_WALLET_ADDRESS;
+        delete process.env.NEXT_PUBLIC_HOUSE_WALLET;
+    });
+
     it('should return 400 if address is not provided in GET request', async () => {
         const req = new Request('http://localhost:3000/api/referral');
         const res = await GET(req);
@@ -143,5 +155,92 @@ describe('Referral API', () => {
         expect(res.status).toBe(400);
         const json = await res.json();
         expect(json.error).toBe('Missing parameters');
+    });
+
+    it('allows the current admin wallet to airdrop bonus', async () => {
+        const req = new Request('http://localhost:3000/api/referral', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'airdrop_bonus',
+                adminAddress: CURRENT_ADMIN_ADDRESS,
+                targetAddress: '0xBonusTarget',
+                amount: 25
+            })
+        });
+
+        const res = await POST(req);
+        const json = await res.json();
+
+        expect(res.status).toBe(200);
+        expect(json.success).toBe(true);
+        expect(json.newBalance).toBe(25);
+    });
+
+    it('rejects a non-admin wallet for bonus airdrop', async () => {
+        const req = new Request('http://localhost:3000/api/referral', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'airdrop_bonus',
+                adminAddress: 'NotAdmin1111111111111111111111111111111111',
+                targetAddress: '0xBonusTarget2',
+                amount: 10
+            })
+        });
+
+        const res = await POST(req);
+        const json = await res.json();
+
+        expect(res.status).toBe(403);
+        expect(json.error).toBe('Unauthorized');
+    });
+
+    it('rejects the retired admin wallet even when stale config references it', async () => {
+        process.env.ADMIN_WALLET_ADDRESS = RETIRED_ADMIN_ADDRESS;
+
+        const req = new Request('http://localhost:3000/api/referral', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'airdrop_bonus',
+                adminAddress: RETIRED_ADMIN_ADDRESS,
+                targetAddress: '0xLegacyTarget',
+                amount: 5
+            })
+        });
+
+        const res = await POST(req);
+        const json = await res.json();
+
+        expect(res.status).toBe(403);
+        expect(json.error).toBe('Unauthorized');
+    });
+
+    it('allows the current admin wallet to fetch leaderboard', async () => {
+        await POST(new Request('http://localhost:3000/api/referral', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                address: '0xLeaderReferrer',
+                newRefereeAddress: '0xLeaderUser'
+            })
+        }));
+
+        const req = new Request('http://localhost:3000/api/referral', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'get_leaderboard',
+                adminAddress: CURRENT_ADMIN_ADDRESS
+            })
+        });
+
+        const res = await POST(req);
+        const json = await res.json();
+
+        expect(res.status).toBe(200);
+        expect(json.success).toBe(true);
+        expect(Array.isArray(json.data)).toBe(true);
     });
 });

@@ -93,4 +93,35 @@ describe('ReferralHandler', () => {
       })
     );
   });
+
+  it('stores the canonical referrer returned by the backend when the referee is already bound', async () => {
+    sessionStorage.setItem('pendingReferrer', 'new-referrer-address');
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        boundReferrerAddress: 'existing-referrer-address',
+        alreadyBound: true,
+      }),
+    });
+
+    render(<ReferralHandler />);
+
+    await waitFor(() => {
+      expect(
+        localStorage.getItem(getBoundReferrerStorageKey('phantom-provider-address'))
+      ).toBe('existing-referrer-address');
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/referral',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          address: 'new-referrer-address',
+          newRefereeAddress: 'phantom-provider-address',
+        }),
+      })
+    );
+  });
 });

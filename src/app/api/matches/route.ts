@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { loadMarketDb, saveMarketDb } from '@/lib/marketDb';
 import { PLATFORM_FEE_RATE } from '@/lib/wallets';
 import { translateToZh, traditionalToSimplified } from '@/lib/translate';
+import { applyWorldCupSeedFallback } from '@/lib/worldcup-seed';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -2277,7 +2278,7 @@ export async function GET(request: NextRequest) {
         } catch {}
     }
 
-    return NextResponse.json(validMatches);
+    return NextResponse.json(applyWorldCupSeedFallback(validMatches));
 
   } catch (error) {
     console.error('Error fetching livescore data:', error);

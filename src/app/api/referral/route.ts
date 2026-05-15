@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { triggerAutoBackup } from '@/lib/gdriveBackup';
+import { getAdminAddresses } from '@/lib/security/auth';
+import { resolveCanonicalReferrerAddress, syncUniqueRefereeBinding } from '@/lib/referral-binding';
+import { calculateReferralStats } from '@/lib/referral-stats';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 
@@ -49,6 +52,19 @@ const POOL_WALLET = new PublicKey(process.env.NEXT_PUBLIC_POOL_WALLET || "9FfHYy
 const HOUSE_WALLET = new PublicKey(process.env.NEXT_PUBLIC_HOUSE_WALLET || "2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K");
 const COMMISSION_WALLET = new PublicKey(process.env.NEXT_PUBLIC_COMMISSION_WALLET || "2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K");
 const ZERO = BigInt(0);
+const RETIRED_REFERRAL_ADMIN = '2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K';
+
+function isAuthorizedReferralAdmin(adminAddress: unknown): boolean {
+    if (typeof adminAddress !== 'string' || !adminAddress.trim()) {
+        return false;
+    }
+
+    const allowedAdmins = getAdminAddresses().filter(
+        (address) => address !== RETIRED_REFERRAL_ADMIN
+    );
+
+    return allowedAdmins.includes(adminAddress);
+}
 
 function toRawAmount(amount: number): bigint {
     if (!Number.isFinite(amount) || amount < 0) return ZERO;
@@ -239,22 +255,10 @@ export async function GET(request: Request) {
         }
     }
     
-    const settledCommissions = userData.commissions.filter(c => c.status === 'settled' && c.referee !== 'WITHDRAWAL');
-    const totalEarned = settledCommissions.reduce((sum, c) => sum + (parseFloat(c.commission) || 0), 0);
-    const now = Date.now();
-    const monthEarned = settledCommissions.reduce((sum, c) => {
-        const ts = Date.parse(c.timestamp);
-        if (!Number.isFinite(ts)) return sum;
-        if (now - ts > 30 * 24 * 60 * 60 * 1000) return sum;
-        return sum + (parseFloat(c.commission) || 0);
-    }, 0);
-    const withdrawn = userData.commissions
-        .filter(c => c.referee === 'WITHDRAWAL' && c.status === 'settled')
-        .reduce((sum, c) => sum + Math.abs(parseFloat(c.commission) || 0), 0);
-    
-    const nextTotal = totalEarned.toFixed(6) + ' USDT';
-    const nextMonth = monthEarned.toFixed(6) + ' USDT';
-    const nextWithdrawable = Math.max(0, totalEarned - withdrawn).toFixed(6) + ' USDT';
+    const calculatedStats = calculateReferralStats({ commissions: userData.commissions });
+    const nextTotal = calculatedStats.total;
+    const nextMonth = calculatedStats.month;
+    const nextWithdrawable = calculatedStats.withdrawable;
     
     if (userData.stats.total !== nextTotal || userData.stats.month !== nextMonth || userData.stats.withdrawable !== nextWithdrawable) {
         userData.stats.total = nextTotal;
@@ -299,18 +303,20 @@ export async function POST(request: Request) {
 
             const userData = getOrCreateUserData(userAddress, db);
             
-            let referrerAddress = clientReferrer;
-            if (!referrerAddress) {
-                for (const [addr, data] of Object.entries(db)) {
-                    if (data.referees.some(r => r.address === userAddress)) {
-                        referrerAddress = addr;
-                        break;
-                    }
-                }
-            }
+            const bindingResolution = resolveCanonicalReferrerAddress({
+                db,
+                refereeAddress: userAddress,
+                requestedReferrerAddress: clientReferrer,
+            });
+            const referrerAddress = bindingResolution.referrerAddress;
             
             if (referrerAddress && referrerAddress !== userAddress) {
                 const referrerData = getOrCreateUserData(referrerAddress, db);
+                const bindingRepair = syncUniqueRefereeBinding({
+                    db,
+                    canonicalReferrerAddress: referrerAddress,
+                    refereeAddress: userAddress,
+                });
                 
                 let refereeIndex = referrerData.referees.findIndex(r => r.address === userAddress);
                 
@@ -323,9 +329,15 @@ export async function POST(request: Request) {
                         earnedCommissionValue: 0,
                         rewardIssued: false
                     });
-                    referrerData.stats.friends += 1;
+                    referrerData.stats.friends = referrerData.referees.length;
                     refereeIndex = 0;
                     console.log(`[REFERRAL REPAIR] Auto-added ${userAddress} to referrer ${referrerAddress} referees list`);
+                }
+
+                if (bindingRepair.duplicateReferrerAddresses.length > 0) {
+                    console.log(
+                        `[REFERRAL REPAIR] Removed duplicate referee ${userAddress} from ${bindingRepair.duplicateReferrerAddresses.join(', ')}`
+                    );
                 }
                 
                 const verification = await verifySplitTransfer({
@@ -399,8 +411,7 @@ export async function POST(request: Request) {
         if (body.action === 'airdrop_bonus') {
             const { adminAddress, targetAddress, amount } = body;
             
-            // 驗證管理員身份 (這裡簡單寫死，真實環境應透過 JWT 或其他驗證機制)
-            if (adminAddress !== '2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K') {
+            if (!isAuthorizedReferralAdmin(adminAddress)) {
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
             }
             
@@ -421,8 +432,7 @@ export async function POST(request: Request) {
         if (body.action === 'update_commission_rate') {
             const { adminAddress, targetAddress, rate } = body;
 
-            // 驗證管理員身份
-            if (adminAddress !== '2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K') {
+            if (!isAuthorizedReferralAdmin(adminAddress)) {
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
             }
 
@@ -450,22 +460,46 @@ export async function POST(request: Request) {
         
         // 如果沒有 action，代表是舊的綁定推薦人邏輯
         if (!body.action && address && newRefereeAddress) {
-            const userData = getOrCreateUserData(address, db);
-            
-            // 新增一個 Referee
-            userData.referees.unshift({
-                id: `ref-new-${Date.now()}`,
-                address: newRefereeAddress,
-                joinDateValue: 0, // 0 days ago (just now)
-                totalVolumeValue: 0,
-                earnedCommissionValue: 0,
-                rewardIssued: false
+            const bindingResolution = resolveCanonicalReferrerAddress({
+                db,
+                refereeAddress: newRefereeAddress,
+                requestedReferrerAddress: address,
             });
+            const boundReferrerAddress = bindingResolution.referrerAddress ?? address;
+            const userData = getOrCreateUserData(boundReferrerAddress, db);
+            const bindingRepair = syncUniqueRefereeBinding({
+                db,
+                canonicalReferrerAddress: boundReferrerAddress,
+                refereeAddress: newRefereeAddress,
+            });
+            const alreadyExists = userData.referees.some((referee) => referee.address === newRefereeAddress);
 
-            userData.stats.friends += 1;
+            if (!alreadyExists) {
+                userData.referees.unshift({
+                    id: `ref-new-${Date.now()}`,
+                    address: newRefereeAddress,
+                    joinDateValue: 0, // 0 days ago (just now)
+                    totalVolumeValue: 0,
+                    earnedCommissionValue: 0,
+                    rewardIssued: false
+                });
+            }
+
+            userData.stats.friends = userData.referees.length;
+
+            if (bindingRepair.duplicateReferrerAddresses.length > 0) {
+                console.log(
+                    `[REFERRAL REPAIR] Removed duplicate binding of ${newRefereeAddress} from ${bindingRepair.duplicateReferrerAddresses.join(', ')}`
+                );
+            }
             saveDatabase(db);
 
-            return NextResponse.json({ success: true, data: userData });
+            return NextResponse.json({
+                success: true,
+                data: userData,
+                boundReferrerAddress,
+                alreadyBound: bindingResolution.alreadyBound || alreadyExists,
+            });
         }
 
         // 獲取所有推薦人的排行榜 (僅限管理員)
@@ -506,7 +540,7 @@ export async function POST(request: Request) {
         if (body.action === 'get_leaderboard') {
             const { adminAddress } = body;
             
-            if (adminAddress !== '2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K') {
+            if (!isAuthorizedReferralAdmin(adminAddress)) {
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
             }
 

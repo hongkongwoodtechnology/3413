@@ -420,7 +420,7 @@ export default function Home() {
         return;
       }
       try {
-        const storedReferrer = localStorage.getItem(`bound_referrer_${address}`);
+        const storedReferrer = localStorage.getItem(getBoundReferrerStorageKey(address));
         if (storedReferrer) {
           const refRes = await fetch(`/api/referral?address=${storedReferrer}`);
           if (refRes.ok) {
@@ -1050,7 +1050,9 @@ export default function Home() {
 
           // Notify Referral API to process potential bonus (Only for real money bets)
           if (!useBonus) {
-              const storedReferrer = localStorage.getItem(`bound_referrer_${currentAddress}`);
+              const storedReferrer = localStorage.getItem(
+                getBoundReferrerStorageKey(currentAddress)
+              );
               fetch('/api/referral', {
                   method: 'POST',
                   body: JSON.stringify({

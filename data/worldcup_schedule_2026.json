@@ -1,0 +1,46 @@
+[
+  {
+    "id": "wc-2026-group-a-001",
+    "home": "Mexico",
+    "away": "Japan",
+    "league": "World Cup 2026",
+    "category": "worldcup",
+    "date": "2026-06-11 20:00",
+    "timestamp": 1781131200000,
+    "status": "upcoming",
+    "score": ""
+  },
+  {
+    "id": "wc-2026-group-b-002",
+    "home": "Spain",
+    "away": "Morocco",
+    "league": "World Cup 2026",
+    "category": "worldcup",
+    "date": "2026-06-12 20:00",
+    "timestamp": 1781217600000,
+    "status": "upcoming",
+    "score": ""
+  },
+  {
+    "id": "wc-2026-group-c-003",
+    "home": "Brazil",
+    "away": "Serbia",
+    "league": "World Cup 2026",
+    "category": "worldcup",
+    "date": "2026-06-13 20:00",
+    "timestamp": 1781304000000,
+    "status": "upcoming",
+    "score": ""
+  },
+  {
+    "id": "wc-2026-group-d-004",
+    "home": "France",
+    "away": "Canada",
+    "league": "World Cup 2026",
+    "category": "worldcup",
+    "date": "2026-06-14 20:00",
+    "timestamp": 1781390400000,
+    "status": "upcoming",
+    "score": ""
+  }
+]

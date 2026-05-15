@@ -194,4 +194,42 @@ describe('LanguageProvider', () => {
     expect(screen.getByTestId('translation-filter.time.7days')).not.toHaveTextContent('filter.time.7days');
     expect(screen.getByTestId('translation-filter.time.all')).not.toHaveTextContent('filter.time.all');
   });
+
+  test('should resolve referral withdraw labels for zh-CN instead of showing raw keys', () => {
+    render(
+      <LanguageProvider initialLocale="zh-CN">
+        <div>
+          <TranslationProbe translationKey="referral.withdraw.rate_label" />
+          <TranslationProbe translationKey="referral.withdraw.rate_desc" />
+          <TranslationProbe translationKey="referral.withdraw.total_label" />
+        </div>
+      </LanguageProvider>
+    );
+
+    expect(screen.getByTestId('translation-referral.withdraw.rate_label')).toHaveTextContent('佣金比例');
+    expect(screen.getByTestId('translation-referral.withdraw.rate_label')).not.toHaveTextContent('referral.withdraw.rate_label');
+    expect(screen.getByTestId('translation-referral.withdraw.rate_desc')).toHaveTextContent('这是此介绍人当前可获得的佣金百分比。');
+    expect(screen.getByTestId('translation-referral.withdraw.rate_desc')).not.toHaveTextContent('referral.withdraw.rate_desc');
+    expect(screen.getByTestId('translation-referral.withdraw.total_label')).toHaveTextContent('累计佣金');
+    expect(screen.getByTestId('translation-referral.withdraw.total_label')).not.toHaveTextContent('referral.withdraw.total_label');
+  });
+
+  test('should fallback referral withdraw labels to english per key for locales without dedicated translations', () => {
+    render(
+      <LanguageProvider initialLocale="th">
+        <div>
+          <TranslationProbe translationKey="referral.withdraw.rate_label" />
+          <TranslationProbe translationKey="referral.withdraw.rate_desc" />
+          <TranslationProbe translationKey="referral.withdraw.total_label" />
+        </div>
+      </LanguageProvider>
+    );
+
+    expect(screen.getByTestId('translation-referral.withdraw.rate_label')).toHaveTextContent('Commission Rate');
+    expect(screen.getByTestId('translation-referral.withdraw.rate_label')).not.toHaveTextContent('referral.withdraw.rate_label');
+    expect(screen.getByTestId('translation-referral.withdraw.rate_desc')).toHaveTextContent('This is the current commission percentage this referrer can earn.');
+    expect(screen.getByTestId('translation-referral.withdraw.rate_desc')).not.toHaveTextContent('referral.withdraw.rate_desc');
+    expect(screen.getByTestId('translation-referral.withdraw.total_label')).toHaveTextContent('Total Commission');
+    expect(screen.getByTestId('translation-referral.withdraw.total_label')).not.toHaveTextContent('referral.withdraw.total_label');
+  });
 });

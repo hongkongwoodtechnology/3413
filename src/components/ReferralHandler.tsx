@@ -73,8 +73,13 @@ export function ReferralHandler() {
             });
 
             if (!res.ok) throw new Error('Failed to bind referral');
+            const data = await res.json().catch(() => ({}));
+            const boundReferrerAddress =
+                typeof data?.boundReferrerAddress === 'string' && data.boundReferrerAddress.length > 0
+                    ? data.boundReferrerAddress
+                    : referrer;
 
-            localStorage.setItem(getBoundReferrerStorageKey(referee), referrer);
+            localStorage.setItem(getBoundReferrerStorageKey(referee), boundReferrerAddress);
             sessionStorage.removeItem('pendingReferrer');
             
             setIsBinding(false);

@@ -1,8 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 
-import type { Match } from '@/lib/types';
-
 type WorldCupSeedEntry = {
   id: string;
   home: string;
@@ -15,6 +13,29 @@ type WorldCupSeedEntry = {
   score: string;
   homeLogo?: string;
   awayLogo?: string;
+};
+
+type WorldCupSeedMatch = {
+  id: string;
+  league: string;
+  category: 'worldcup';
+  home: string;
+  away: string;
+  date: string;
+  timestamp: number;
+  pools: {
+    home: number;
+    draw: number;
+    away: number;
+  };
+  status: 'upcoming' | 'live' | 'finished';
+  score: string | null;
+  homeLogo: string;
+  awayLogo: string;
+};
+
+type MatchWithCategory = {
+  category: string;
 };
 
 const WORLD_CUP_SEED_PATH = path.join(process.cwd(), 'data', 'worldcup_schedule_2026.json');
@@ -34,7 +55,7 @@ function isValidSeedEntry(value: unknown): value is WorldCupSeedEntry {
     typeof entry.score === 'string';
 }
 
-export function loadWorldCupSeed(): Match[] {
+export function loadWorldCupSeed(): WorldCupSeedMatch[] {
   try {
     const raw = fs.readFileSync(WORLD_CUP_SEED_PATH, 'utf-8');
     const parsed = JSON.parse(raw);
@@ -61,7 +82,9 @@ export function loadWorldCupSeed(): Match[] {
   }
 }
 
-export function applyWorldCupSeedFallback<T extends Match>(matches: T[]): Array<T | Match> {
+export function applyWorldCupSeedFallback<T extends MatchWithCategory>(
+  matches: T[]
+): Array<T | WorldCupSeedMatch> {
   const hasWorldCupMatch = matches.some((match) => match.category === 'worldcup');
   if (hasWorldCupMatch) return matches;
 
