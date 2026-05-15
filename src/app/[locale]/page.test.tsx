@@ -37,12 +37,38 @@ const MATCH_FIXTURE = [
   },
 ];
 
+const ZERO_POOL_MATCH_FIXTURE = [
+  {
+    ...MATCH_FIXTURE[0],
+    pools: { home: 0, draw: 0, away: 0 },
+    marketData: {
+      ...MATCH_FIXTURE[0].marketData,
+      realTotalPool: 0,
+      pools: { home: 0, draw: 0, away: 0 },
+    },
+  },
+];
+
 function makeJsonResponse(payload: unknown, ok = true): Response {
   return {
     ok,
     status: ok ? 200 : 403,
     json: async () => payload,
   } as Response;
+}
+
+async function openTrialPredictionModal() {
+  await waitFor(() => {
+    expect(screen.getByText("Alpha FC")).toBeInTheDocument();
+  });
+
+  fireEvent.click(screen.getAllByRole("button", { name: /1\.5/ })[0]);
+  fireEvent.click(screen.getByRole("button", { name: "label.trial_funds" }));
+  fireEvent.change(screen.getByPlaceholderText("0.00"), {
+    target: { value: "4" },
+  });
+
+  return screen.getByRole("button", { name: "btn.confirm" });
 }
 
 jest.mock("next/dynamic", () => ({
@@ -305,36 +331,14 @@ describe("[locale] Home referral landing", () => {
     });
   });
 
-  it("does not show localized success UI when /api/bets rejects the bet", async () => {
+  it("disables localized confirm when trial funds would open an empty pool", async () => {
     mockedLanguage = "zh-TW";
     mockedConnected = true;
     mockedPublicKey = { toBase58: () => "wallet-111" };
-    mockedSkipChainProgress = true;
-    (fetchLiveMatches as jest.Mock).mockResolvedValue(MATCH_FIXTURE);
+    (fetchLiveMatches as jest.Mock).mockResolvedValue(ZERO_POOL_MATCH_FIXTURE);
     (getUSDTBalance as jest.Mock).mockResolvedValue(100);
     (getTrialUSDTBalance as jest.Mock).mockResolvedValue(15);
     window.history.replaceState({}, "", "/zh-TW");
-    (global.fetch as jest.Mock).mockImplementation(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.startsWith("/api/balance?address=")) {
-        return makeJsonResponse({ success: true, balance: 100 });
-      }
-      if (url.startsWith("/api/bets?address=")) {
-        return makeJsonResponse({ success: true, data: [] });
-      }
-      if (url === "/api/bets") {
-        return makeJsonResponse(
-          { success: false, error: "體驗金不可作為該場賭池首注" },
-          false
-        );
-      }
-      if (url === "/api/referral") {
-        return makeJsonResponse({ success: true, newBalance: 11 });
-      }
-      return makeJsonResponse({ success: true, data: [] });
-    });
-
-    const alertSpy = jest.spyOn(window, "alert").mockImplementation(() => {});
 
     render(<Home />);
 
@@ -342,24 +346,49 @@ describe("[locale] Home referral landing", () => {
       expect(screen.getByText("15.00 tUSDT")).toBeInTheDocument();
     });
 
+    const confirmButton = await openTrialPredictionModal();
+    expect(confirmButton).toBeDisabled();
+  });
+
+  it("keeps localized confirm enabled when trial funds are used on a non-zero pool match", async () => {
+    mockedLanguage = "zh-TW";
+    mockedConnected = true;
+    mockedPublicKey = { toBase58: () => "wallet-111" };
+    (fetchLiveMatches as jest.Mock).mockResolvedValue(MATCH_FIXTURE);
+    (getUSDTBalance as jest.Mock).mockResolvedValue(100);
+    (getTrialUSDTBalance as jest.Mock).mockResolvedValue(15);
+    window.history.replaceState({}, "", "/zh-TW");
+
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText("15.00 tUSDT")).toBeInTheDocument();
+    });
+
+    const confirmButton = await openTrialPredictionModal();
+    expect(confirmButton).toBeEnabled();
+  });
+
+  it("keeps localized confirm enabled when real money opens an empty pool", async () => {
+    mockedLanguage = "zh-TW";
+    mockedConnected = true;
+    mockedPublicKey = { toBase58: () => "wallet-111" };
+    (fetchLiveMatches as jest.Mock).mockResolvedValue(ZERO_POOL_MATCH_FIXTURE);
+    (getUSDTBalance as jest.Mock).mockResolvedValue(100);
+    (getTrialUSDTBalance as jest.Mock).mockResolvedValue(15);
+    window.history.replaceState({}, "", "/zh-TW");
+
+    render(<Home />);
+
     await waitFor(() => {
       expect(screen.getByText("Alpha FC")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getAllByRole("button", { name: /1\.5/ })[0]);
-    fireEvent.click(screen.getByRole("button", { name: "label.trial_funds" }));
     fireEvent.change(screen.getByPlaceholderText("0.00"), {
       target: { value: "4" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "btn.confirm" }));
 
-    await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith(
-        expect.stringContaining("體驗金不可作為該場賭池首注")
-      );
-    });
-
-    expect(screen.queryByText("modal.prediction_placed")).toBeNull();
-    expect(screen.getByText("15.00 tUSDT")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "btn.confirm" })).toBeEnabled();
   });
 });
