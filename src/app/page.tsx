@@ -10,27 +10,8 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { Trophy, TrendingUp, ShieldCheck, Clock, Search, Filter, AlertTriangle, Menu, X, Globe, Star, ChevronDown, Gift, Newspaper } from "lucide-react"
 import { DynamicOddsEngine, type RiskLevel } from "@/lib/odds-engine"
 import { LiquidityAnalyzer } from "@/lib/analytics"
-import { fetchLiveMatches } from "@/lib/api"
 import { shouldSkipChainProgressForBet } from "@/lib/bet-progress"
-import {
-  shouldShowMatchesLoading,
-  shouldStartMatchesLoading,
-} from "@/lib/live-matches-loading"
-import { Match as BaseMatch } from "@/lib/types"
 import Link from "next/link"
-
-// 更新 Match 介面以支援新的 Market Data
-type Match = BaseMatch & {
-  marketData?: {
-    realTotalPool: number
-    liabilities: { home: number, draw: number, away: number }
-    pools: { home: number, draw: number, away: number }
-    attractionWindowUsed?: { home: number, draw: number, away: number }
-    seedPools?: { home: number, draw: number, away: number }
-    initialOdds: { home: number, draw: number, away: number }
-    initialProbs?: { home: number, draw: number, away: number }
-  }
-}
 import { useLanguage } from "@/components/LanguageProvider"
 import dynamic from "next/dynamic"
 
@@ -50,6 +31,10 @@ import { HOUSE_WALLET, COMMISSION_WALLET, USDT_MINT, USDT_DECIMALS, PLATFORM_FEE
 import { getReturnRateForBetMode } from "@/lib/bet-mode"
 import { countActiveOutcomes } from "@/lib/market-rules"
 import { TEAM_NAMES, LEAGUES } from "@/lib/dictionaries"
+import { useHomeMatchesData, type MatchWithMarketData } from "@/hooks/useHomeMatchesData"
+import { useReferralLandingGate } from "@/hooks/useReferralLandingGate"
+
+type Match = MatchWithMarketData
 
 // --- CATEGORY DEFINITIONS ---
 const CATEGORIES = [
@@ -335,14 +320,9 @@ export default function Home() {
   const [activeLeague, setActiveLeague] = useState<string | null>(null)
   const [isLeagueMenuOpen, setIsLeagueMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
   const [balance, setBalance] = useState<number>(0)
   const [trialBalance, setTrialBalance] = useState<number>(0)
   const [currentView, setCurrentView] = useState<'matches' | 'bonus_event' | 'news_detail' | 'news_center'>('matches')
-  // State for dynamic pools
-  const [matches, setMatches] = useState<Match[]>(INITIAL_MATCHES)
-  const matchesFingerprintRef = useRef<string>('')
-  const mountedRef = useRef(true)
   const [myBets, setMyBets] = useState<BetRecord[]>([])
   const [dateFilter, setDateFilter] = useState<'today' | '3days' | '7days' | '30days' | '3months'>('3months')
   const [currentBetPage, setCurrentBetPage] = useState(0)
@@ -369,30 +349,20 @@ export default function Home() {
     return getReturnRateForBetMode(useBonus);
   }, [useBonus]);
 
-  // Referral Landing Page State
-  const [showReferralLanding, setShowReferralLanding] = useState(false);
-  const [urlReferrer, setUrlReferrer] = useState<string | null>(null);
-
-  // Parse URL for 'ref' parameter on mount
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => { mountedRef.current = false; };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const refParam = params.get('ref');
-      if (refParam && !connected) {
-        setUrlReferrer(refParam);
-        setShowReferralLanding(true);
-      }
-    }
-  }, [connected]);
+  const {
+    referrerId: urlReferrer,
+    shouldShowReferralLanding: shouldPauseMatchesFetching,
+    dismissReferralLanding,
+  } = useReferralLandingGate(connected);
 
   // Initialize Engines (0% 利潤率 — 抽水已透過鏈上拆分轉帳實現)
   const oddsEngine = useMemo(() => new DynamicOddsEngine(PLATFORM_FEE_RATE, 200), [])
   const liquidityAnalyzer = useMemo(() => new LiquidityAnalyzer(), [])
+  const { matches, setMatchesIfChanged, showMatchesLoading } = useHomeMatchesData<Match>({
+    language,
+    shouldPauseMatchesFetching,
+    initialMatches: INITIAL_MATCHES,
+  })
 
   // Admin Check
   const isAdmin = useMemo(() => {
@@ -511,247 +481,8 @@ export default function Home() {
     };
   }, [connected, publicKey]);
 
-
-  // --- REAL DATA FETCHING ---
-  function computeFingerprint(list: Match[]): string {
-    const parts: string[] = [];
-    for (const m of list) {
-      parts.push(`${m.id}:${m.status}:${m.score ?? '-'}:${m.liveMinute ?? 0}:${m.home}:${m.away}`);
-      if (m.marketData) {
-        parts.push(`${m.marketData.realTotalPool}:${m.marketData.liabilities.home}:${m.marketData.liabilities.draw}:${m.marketData.liabilities.away}`);
-      }
-    }
-    return parts.join('|');
-  }
-
-  function setMatchesIfChanged(next: Match[] | ((prev: Match[]) => Match[])) {
-    setMatches(prev => {
-      const resolved = typeof next === 'function' ? next(prev) : next;
-      const fp = computeFingerprint(resolved);
-      if (fp === matchesFingerprintRef.current) return prev;
-      matchesFingerprintRef.current = fp;
-      return resolved;
-    });
-  }
-
-  const loadMatches = async (
-    currentLang: string,
-    isInitial: boolean = false,
-    canSetState?: () => boolean
-  ) => {
-      if (isInitial) {
-          if (!canSetState || canSetState()) {
-              setIsLoading(true);
-          }
-      }
-      try {
-          const data = await fetchLiveMatches(currentLang);
-          if (!canSetState || canSetState()) {
-              if (data.length > 0) {
-                  setMatchesIfChanged(prev => {
-                      if (prev.length === 0) return data;
-                      const dataMap = new Map(data.map((m: Match) => [String(m.id), m]));
-                      const merged: Match[] = [];
-                      for (const pm of prev) {
-                          const fresh = dataMap.get(String(pm.id));
-                          if (!fresh) { merged.push(pm); continue; }
-                          dataMap.delete(String(pm.id));
-                          if (pm.marketData && fresh.marketData &&
-                              pm.marketData.realTotalPool > fresh.marketData.realTotalPool) {
-                              merged.push({ ...fresh, marketData: pm.marketData, pools: pm.pools });
-                          } else {
-                              merged.push(fresh);
-                          }
-                      }
-                      for (const [, m] of dataMap) { merged.push(m); }
-                      return merged;
-                  });
-              }
-          }
-      } catch (error) {
-          const err: any = error;
-          const errStr = String(error);
-          const isAbort =
-            err?.name === 'AbortError' ||
-            errStr.includes('AbortError') ||
-            errStr.includes('ERR_ABORTED') ||
-            errStr.toLowerCase().includes('aborted');
-          if (!isAbort) {
-              console.error("Failed to load matches", error);
-          }
-      } finally {
-          if (isInitial && (!canSetState || canSetState())) {
-              setIsLoading(false);
-          }
-      }
-  };
-
-  useEffect(() => {
-    let isMounted = true;
-
-    // Instant optimistic translation of existing matches!
-    if (matches.length > 0) {
-        setMatchesIfChanged(prevMatches => prevMatches.map(m => {
-            const newMatch = { ...m };
-            
-            // Translate Teams
-            const getTeamTrans = (orig: string | undefined) => {
-                if (!orig) return null;
-                const exact = TEAM_NAMES[orig]?.[language];
-                if (exact) return exact;
-                const lowerOrig = orig.toLowerCase();
-                for (const [key, translations] of Object.entries(TEAM_NAMES)) {
-                    if (lowerOrig.includes(key.toLowerCase()) && (translations as any)[language]) {
-                        return (translations as any)[language];
-                    }
-                }
-                return orig; // Fallback to original
-            };
-            
-            if (m.homeOriginal) {
-                const trans = getTeamTrans(m.homeOriginal);
-                if (trans) newMatch.home = trans;
-            }
-            if (m.awayOriginal) {
-                const trans = getTeamTrans(m.awayOriginal);
-                if (trans) newMatch.away = trans;
-            }
-            
-            // Translate League
-            if (m.leagueOriginal) {
-                const leagueMatch = LEAGUES.find(l => {
-                    const ln = l.name.toLowerCase();
-                    const sn = m.leagueOriginal!.toLowerCase();
-                    let matches = ln === sn || ln.includes(sn) || sn.includes(ln);
-                    if (!matches && (l as any).aliases) {
-                        matches = (l as any).aliases.some((alias: string) => {
-                            const aln = alias.toLowerCase();
-                            return aln === sn || aln.includes(sn) || sn.includes(aln);
-                        });
-                    }
-                    return matches;
-                });
-                if (leagueMatch && leagueMatch.names && (leagueMatch.names as any)[language]) {
-                    newMatch.league = (leagueMatch.names as any)[language];
-                }
-            }
-            
-            return newMatch;
-        }));
-    }
-
-    // Load matches on language change without always resetting to full loading screen
-    let requestSeq = 0;
-    const startFetch = async () => {
-        const seq = ++requestSeq;
-        const isInitialFetch = shouldStartMatchesLoading(matches.length);
-        return loadMatches(language, isInitialFetch, () => isMounted && seq === requestSeq);
-    };
-
-    void startFetch();
-
-    // Poll every 15 seconds for live scores
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    let inFlight = false;
-    let inFlightSince = 0;
-    const MAX_INFLIGHT_MS = 30000;
-    let consecutiveFailures = 0;
-    const pollMs = 15000;
-    const canPoll = () => (typeof document === 'undefined' ? true : document.visibilityState === 'visible');
-    const onVisibilityChange = () => {
-        if (canPoll()) {
-            void startFetch();
-        }
-    };
-    if (typeof document !== 'undefined') {
-        document.addEventListener('visibilitychange', onVisibilityChange);
-    }
-
-    const poll = async () => {
-        if (!isMounted) return;
-        if (!canPoll()) {
-            timeoutId = setTimeout(poll, pollMs);
-            return;
-        }
-        if (inFlight) {
-            if (Date.now() - inFlightSince > MAX_INFLIGHT_MS) {
-                inFlight = false;
-                inFlightSince = 0;
-            } else {
-                timeoutId = setTimeout(poll, pollMs);
-                return;
-            }
-        }
-
-        inFlight = true;
-        inFlightSince = Date.now();
-        try {
-            const seq = ++requestSeq;
-            const data = await fetchLiveMatches(language);
-            if (isMounted && seq === requestSeq && data.length > 0) {
-                consecutiveFailures = 0;
-                setMatchesIfChanged(prev => {
-                    const dataMap = new Map(data.map((m: Match) => [String(m.id), m]));
-                    const merged: Match[] = [];
-                    const prevIds = new Set(prev.map((m: Match) => String(m.id)));
-                    // Keep locally-updated matches whose pools exceed the API version
-                    for (const pm of prev) {
-                        const fresh = dataMap.get(String(pm.id));
-                        if (!fresh) { merged.push(pm); continue; }
-                        dataMap.delete(String(pm.id));
-                        if (pm.marketData && fresh.marketData &&
-                            pm.marketData.realTotalPool > fresh.marketData.realTotalPool) {
-                            merged.push({ ...fresh, marketData: pm.marketData, pools: pm.pools });
-                        } else {
-                            merged.push(fresh);
-                        }
-                    }
-                    // Add new matches not in previous state
-                    for (const [, m] of dataMap) {
-                        merged.push(m);
-                    }
-                    return merged;
-                });
-            } else if (isMounted && seq === requestSeq) {
-                consecutiveFailures++;
-            }
-        } catch (e) {
-            const err: any = e;
-            const errStr = String(e);
-            const isAbort =
-              err?.name === 'AbortError' ||
-              errStr.includes('AbortError') ||
-              errStr.includes('ERR_ABORTED') ||
-              errStr.toLowerCase().includes('aborted');
-            if (!isAbort) {
-                console.error("Background fetch failed", e);
-            }
-            consecutiveFailures++;
-        } finally {
-            inFlight = false;
-            inFlightSince = 0;
-            if (isMounted) {
-                const backoff = Math.min(consecutiveFailures, 4) * pollMs;
-                const nextPoll = pollMs + backoff;
-                timeoutId = setTimeout(poll, nextPoll);
-            }
-        }
-    };
-
-    timeoutId = setTimeout(poll, pollMs);
-
-    return () => {
-        isMounted = false;
-        if (typeof document !== 'undefined') {
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-        }
-        if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [language]);
-
   // Derived state for the currently selected match
   const currentMatch = matches.find(m => m.id === selectedMatchId)
-  const showMatchesLoading = shouldShowMatchesLoading(isLoading, matches.length)
 
   const visibleMatches = useMemo(() => {
     return matches.filter(m => m.status !== 'finished');
@@ -1413,16 +1144,6 @@ export default function Home() {
     setCurrentBetPage(0);
   }, [dateFilter]);
 
-  // 1. 若有推薦參數且尚未連線，顯示邀請落地頁
-  if (showReferralLanding && urlReferrer && !connected) {
-      return (
-          <ReferralLandingPage 
-              referrerId={urlReferrer} 
-              onSkip={() => setShowReferralLanding(false)} 
-          />
-      );
-  }
-
   const betActionNode = useMemo(() => {
     if (projectedOdds?.riskLevel === 'position_limit') {
       return (
@@ -1468,6 +1189,16 @@ export default function Home() {
       </Button>
     );
   }, [projectedOdds, projectedOdds?.riskLevel, amount, txStatus, useBonus, trialBalance, isProcessing, connected, t, oddsEngine, handlePrediction]);
+
+  // 1. 若有推薦參數且尚未連線，顯示邀請落地頁
+  if (shouldPauseMatchesFetching) {
+      return (
+          <ReferralLandingPage 
+              referrerId={urlReferrer} 
+              onSkip={dismissReferralLanding} 
+          />
+      );
+  }
 
   // 2. 主應用程式視圖
   return (
@@ -2111,7 +1842,7 @@ export default function Home() {
                 ← {t('pagination.prev')}
               </button>
               <span className="text-sm text-neutral-500 font-medium">
-                {t('pagination.page')} {currentMatchPage + 1} / {totalMatchPages}
+                {t('pagination.page_of', { current: currentMatchPage + 1, total: totalMatchPages })}
               </span>
               <button
                 onClick={() => setCurrentMatchPage(p => Math.min(totalMatchPages - 1, p + 1))}

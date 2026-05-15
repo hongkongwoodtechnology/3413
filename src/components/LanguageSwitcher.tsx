@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "./LanguageProvider";
 import { LANGUAGES, Language } from "@/lib/i18n";
 import { Globe, ChevronDown, Check } from "lucide-react";
@@ -9,6 +10,25 @@ import { Globe, ChevronDown, Check } from "lucide-react";
 export function LanguageSwitcher() {
   const { language, setLanguage } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname() || "/";
+  const searchParams = useSearchParams();
+
+  const localeSet = useMemo(() => new Set(LANGUAGES.map((lang) => lang.code)), []);
+
+  function buildLocalePath(nextLocale: Language) {
+    const segments = pathname.split("/").filter(Boolean);
+    const hasLocalePrefix = segments.length > 0 && localeSet.has(segments[0] as Language);
+
+    const nextSegments = hasLocalePrefix
+      ? [nextLocale, ...segments.slice(1)]
+      : [nextLocale, ...segments];
+
+    const nextPath = `/${nextSegments.join("/")}`;
+    const query = searchParams?.toString();
+
+    return query ? `${nextPath}?${query}` : nextPath;
+  }
 
   const currentLang = LANGUAGES.find(l => l.code === language) || LANGUAGES[0];
 
@@ -34,7 +54,9 @@ export function LanguageSwitcher() {
               <button
                 key={lang.code}
                 onClick={() => {
+                  localStorage.setItem('app-language', lang.code);
                   setLanguage(lang.code);
+                  router.push(buildLocalePath(lang.code));
                   setIsOpen(false);
                 }}
                 className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-neutral-700/50 transition-colors ${

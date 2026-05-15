@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadMarketDb, saveMarketDb } from '@/lib/marketDb';
 import { PLATFORM_FEE_RATE } from '@/lib/wallets';
-import { translateToZhTW } from '@/lib/translate';
+import { translateToZh, traditionalToSimplified } from '@/lib/translate';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -1712,10 +1712,13 @@ export async function GET(request: NextRequest) {
     const EURO_DIRECT = new Set(['es', 'fr', 'de', 'pt']);
 
     const getTeamName = async (name: string, id?: string) => {
-      if (!name || name === id) return `未知隊伍 #${id || '?'}`;
+      if (!name || name === id) return lang === 'zh-CN' ? `未知队伍 #${id || '?'}` : `未知隊伍 #${id || '?'}`;
 
       if (TEAM_NAMES[name] && TEAM_NAMES[name][lang]) {
-        const mapped = (lang === 'zh-TW' || lang === 'zh-CN') ? sanitizeZh(TEAM_NAMES[name][lang], lang) : TEAM_NAMES[name][lang];
+        let mapped = (lang === 'zh-TW' || lang === 'zh-CN') ? sanitizeZh(TEAM_NAMES[name][lang], lang) : TEAM_NAMES[name][lang];
+        if (lang === 'zh-CN') {
+          mapped = traditionalToSimplified(mapped);
+        }
         return mapped || name;
       }
 
@@ -1724,7 +1727,10 @@ export async function GET(request: NextRequest) {
         const normalizedKey = key.toLowerCase();
         if (normalizedName.includes(normalizedKey)) {
           if ((translations as any)[lang]) {
-            const mapped = (lang === 'zh-TW' || lang === 'zh-CN') ? sanitizeZh((translations as any)[lang], lang) : (translations as any)[lang];
+            let mapped = (lang === 'zh-TW' || lang === 'zh-CN') ? sanitizeZh((translations as any)[lang], lang) : (translations as any)[lang];
+            if (lang === 'zh-CN') {
+              mapped = traditionalToSimplified(mapped);
+            }
             return mapped || name;
           }
         }
@@ -1732,9 +1738,14 @@ export async function GET(request: NextRequest) {
 
       if ((lang === 'zh-TW' || lang === 'zh-CN') && containsLatin(name)) {
         try {
-          const { translated } = await translateToZhTW(name);
-          const sanitized = sanitizeZh(translated, lang);
-          if (sanitized && !containsLatin(sanitized)) return sanitized;
+          const { translated } = await translateToZh(name, lang);
+          let sanitized = sanitizeZh(translated, lang);
+          if (sanitized && !containsLatin(sanitized)) {
+            if (lang === 'zh-CN') {
+              sanitized = traditionalToSimplified(sanitized);
+            }
+            return sanitized;
+          }
         } catch (_) {}
       }
 
@@ -1824,7 +1835,10 @@ export async function GET(request: NextRequest) {
       if (leagueMatch) {
         category = leagueMatch.category;
         if (leagueMatch.names && (leagueMatch.names as any)[lang]) {
-          const mapped = (lang === 'zh-TW' || lang === 'zh-CN') ? sanitizeZh((leagueMatch.names as any)[lang], lang) : (leagueMatch.names as any)[lang];
+          let mapped = (lang === 'zh-TW' || lang === 'zh-CN') ? sanitizeZh((leagueMatch.names as any)[lang], lang) : (leagueMatch.names as any)[lang];
+          if (lang === 'zh-CN') {
+            mapped = traditionalToSimplified(mapped);
+          }
           // For non-Chinese languages, always trust the translation map without containsLatin checks
           if (lang !== 'zh-TW' && lang !== 'zh-CN') {
             mappedName = mapped;
@@ -1835,7 +1849,13 @@ export async function GET(request: NextRequest) {
           if (!((lang === 'zh-TW' || lang === 'zh-CN') && containsLatin(mapped))) {
             mappedName = mapped;
             const suffix = cleanedName.includes('：') ? cleanedName.split('：').slice(1).join('：').trim() : cleanedName.includes(':') ? cleanedName.split(':').slice(1).join(':').trim() : '';
-            if (suffix) mappedName = `${mappedName}：${localizeLeagueNameFallback(suffix, lang)}`;
+            if (suffix) {
+              let localizedSuffix = localizeLeagueNameFallback(suffix, lang);
+              if (lang === 'zh-CN') {
+                localizedSuffix = traditionalToSimplified(localizedSuffix);
+              }
+              mappedName = `${mappedName}：${localizedSuffix}`;
+            }
             return { name: mappedName, category };
           }
         }
@@ -1851,8 +1871,12 @@ export async function GET(request: NextRequest) {
 
       if (lang === 'zh-TW' || lang === 'zh-CN') {
         const translatedCountry = await getLocalizedCountryName(cleanedCountry);
-        const safeCountry = translatedCountry?.trim() || cleanedCountry;
-        const safeLeague = forceLeagueLabel || localizeLeagueNameFallback(cleanedName, lang);
+        let safeCountry = translatedCountry?.trim() || cleanedCountry;
+        let safeLeague = forceLeagueLabel || localizeLeagueNameFallback(cleanedName, lang);
+        if (lang === 'zh-CN') {
+          safeCountry = traditionalToSimplified(safeCountry);
+          safeLeague = traditionalToSimplified(safeLeague);
+        }
 
         if (safeLeague && safeCountry) {
           const normalizedCountry = safeCountry.toLowerCase();

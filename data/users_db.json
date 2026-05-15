@@ -1,0 +1,46 @@
+[
+  {
+    "id": "SOL_U1",
+    "address": "7xV9p2aB4cDEFG5hIJ6kLM7nOP8qRS9tU0vW1xY2z",
+    "refCode": "REF_ALPHA",
+    "totalBets": 15,
+    "totalAmount": 4500,
+    "joinedAt": "2026-03-01",
+    "type": "User",
+    "commission": 0,
+    "downlines": 0
+  },
+  {
+    "id": "SOL_U2",
+    "address": "3mK2z1yX0wV9uT8sR7qP6oN5mL4kJ3iH2gG1fF0eE",
+    "refCode": "REF_ALPHA",
+    "totalBets": 42,
+    "totalAmount": 12000,
+    "joinedAt": "2026-02-15",
+    "type": "Referrer",
+    "commission": 450,
+    "downlines": 12
+  },
+  {
+    "id": "SOL_U3",
+    "address": "9vQ4x8wR2yT5uI1oP7lK3jH6gG0fF9eD8cB7aA6Z5",
+    "refCode": "REF_BETA",
+    "totalBets": 5,
+    "totalAmount": 300,
+    "joinedAt": "2026-03-10",
+    "type": "User",
+    "commission": 0,
+    "downlines": 0
+  },
+  {
+    "id": "SOL_U4",
+    "address": "1aA2bB3cC4dD5eE6fF7gG8hH9iI0jJ1kK2lL3mM4n",
+    "refCode": "REF_GAMMA",
+    "totalBets": 120,
+    "totalAmount": 45000,
+    "joinedAt": "2026-01-20",
+    "type": "Referrer",
+    "commission": 1250,
+    "downlines": 45
+  }
+]

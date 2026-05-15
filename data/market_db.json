@@ -100,5 +100,23 @@
     "settled": true,
     "finalWinner": "home",
     "finalScore": "4-0"
+  },
+  "1766848": {
+    "realTotalPool": 0.01,
+    "liabilities": {
+      "home": 0.0193,
+      "draw": 0,
+      "away": 0
+    },
+    "pools": {
+      "home": 0.01,
+      "draw": 0,
+      "away": 0
+    },
+    "attractionWindowUsed": {
+      "home": 0,
+      "draw": 0,
+      "away": 0
+    }
   }
 }

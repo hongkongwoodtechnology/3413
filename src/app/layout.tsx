@@ -22,6 +22,30 @@ export const metadata: Metadata = {
   description: "Decentralized sports prediction market on Solana",
 };
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      name: "PolyBall",
+      url: "https://polyball.xyz",
+      applicationCategory: "FinanceApplication",
+      operatingSystem: "All",
+      description: "Decentralized sports prediction market on Solana",
+    },
+    {
+      "@type": "SportsEvent",
+      name: "World Cup 2026",
+      description: "Bet on World Cup matches securely using Web3 technology.",
+      sport: "Soccer",
+      location: {
+        "@type": "Place",
+        name: "Global",
+      },
+    },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,6 +53,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <meta httpEquiv="Content-Security-Policy" content="upgrade-insecure-requests" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body
         className={`antialiased`}
       >

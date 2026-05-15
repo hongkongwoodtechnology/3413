@@ -56,7 +56,7 @@ describe('Referral API', () => {
         expect(json.data.referees[0].rewardIssued).toBe(false);
     });
 
-    it('should issue 100U bonus when referee volume reaches 3U', async () => {
+    it('should issue 100U bonus when referee volume reaches 1000U', async () => {
         const referrer = '0xReferrer';
         const referee = '0xRefereeThreshold';
         
@@ -67,11 +67,11 @@ describe('Referral API', () => {
             body: JSON.stringify({ address: referrer, newRefereeAddress: referee })
         }));
 
-        // 2. Place bet of 2U (Not enough for bonus)
+        // 2. Place bet of 500U (Not enough for bonus)
         await POST(new Request('http://localhost:3000/api/referral', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'place_bet', userAddress: referee, referrerAddress: referrer, betAmount: 2 })
+            body: JSON.stringify({ action: 'place_bet', userAddress: referee, referrerAddress: referrer, betAmount: 500 })
         }));
 
         // Check balances (should be 0)
@@ -79,11 +79,11 @@ describe('Referral API', () => {
         let json = await res.json();
         expect(json.data.balances.bonus).toBe(0);
 
-        // 3. Place another bet of 1.5U (Total = 3.5U, should trigger bonus)
+        // 3. Place another bet of 600U (Total = 1100U, should trigger bonus)
         await POST(new Request('http://localhost:3000/api/referral', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'place_bet', userAddress: referee, referrerAddress: referrer, betAmount: 1.5 })
+            body: JSON.stringify({ action: 'place_bet', userAddress: referee, referrerAddress: referrer, betAmount: 600 })
         }));
 
         // Check balances (should be 100)
@@ -95,7 +95,7 @@ describe('Referral API', () => {
         res = await GET(new Request(`http://localhost:3000/api/referral?address=${referrer}`));
         json = await res.json();
         const refRecord = json.data.referees.find((r: any) => r.address === referee);
-        expect(refRecord.totalVolumeValue).toBe(3.5);
+        expect(refRecord.totalVolumeValue).toBe(1100);
         expect(refRecord.rewardIssued).toBe(true);
 
         // 4. Place another bet (Should NOT trigger bonus again)
@@ -114,7 +114,7 @@ describe('Referral API', () => {
     it('should NOT issue bonus if user has no referrer (independent account)', async () => {
         const independentUser = '0xIndependentUser';
         
-        // Place bet of 5U (Over 3U threshold, but NO referrer provided)
+        // Place a bet (but NO referrer provided, so no bonus eligible)
         await POST(new Request('http://localhost:3000/api/referral', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

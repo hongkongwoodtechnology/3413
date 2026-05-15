@@ -370,11 +370,11 @@ export async function POST(request: Request) {
                     
                     console.log(`[COMMISSION] ✅ ${commissionEarned.toFixed(6)} USDT verified on-chain | Referrer: ${referrerAddress} | Bettor: ${userAddress} | Bet: ${betAmount} USDT`);
                     
-                    // 檢查是否達到 3U 門檻且尚未發放獎勵
-                    if (ref.totalVolumeValue >= 3 && !ref.rewardIssued) {
+                    // 檢查是否達到 1000U 門檻且尚未發放獎勵
+                    if (ref.totalVolumeValue >= 1000 && !ref.rewardIssued) {
                         userData.balances.bonus += 100;
                         ref.rewardIssued = true;
-                        console.log(`[REWARD ISSUED] 100U Bonus issued to ${userAddress} for reaching 3U volume (Referred by ${referrerAddress})`);
+                        console.log(`[REWARD ISSUED] 100U Bonus issued to ${userAddress} for reaching 1000U volume (Referred by ${referrerAddress})`);
                     }
                 }
                 saveDatabase(db);

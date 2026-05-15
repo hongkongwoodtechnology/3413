@@ -210,6 +210,10 @@ const REFERRAL_KEYS = {
     'bonus.step4.btn.go': 'Go to Matches',
     'bonus.error.connect': 'Please connect your wallet first.',
     'bonus.error.fail': 'Failed to claim bonus. Please try again.',
+    'pagination.prev': 'Previous',
+    'pagination.page': 'Page',
+    'pagination.page_of': 'Page {current} / {total}',
+    'pagination.next': 'Next',
   },
   'zh-TW': {
     'referral.title': '邀請好友賺佣金',
@@ -440,6 +444,10 @@ const REFERRAL_KEYS = {
     'bonus.step4.btn.go': '前往賽事大廳',
     'bonus.error.connect': '請先連接您的錢包。',
     'bonus.error.fail': '領取失敗，請重試。',
+    'pagination.prev': '上一頁',
+    'pagination.page': '第',
+    'pagination.page_of': '第 {current} 頁 / 共 {total} 頁',
+    'pagination.next': '下一頁',
   },
   'zh-CN': {
     'referral.title': '邀请好友赚佣金',
@@ -661,6 +669,10 @@ const REFERRAL_KEYS = {
     'bonus.step4.btn.go': '前往赛事大厅',
     'bonus.error.connect': '请先连接您的钱包。',
     'bonus.error.fail': '领取失败，请重试。',
+    'pagination.prev': '上一页',
+    'pagination.page': '第',
+    'pagination.page_of': '第 {current} 页 / 共 {total} 页',
+    'pagination.next': '下一页',
   },
     'es': {
       "referral.title": "Programa de referencia",
@@ -2696,6 +2708,7 @@ export const LANGUAGES: { code: Language; label: string; flag: string }[] = [
 
 const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
   en: {
+
     'app.title': 'PolyBall',
     'hero.title.1': 'Predict Sports.',
     'hero.title.2': 'Win Crypto.',
@@ -2747,6 +2760,11 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'liquidity.healthy': 'Healthy Liquidity',
     'liquidity.warning': 'Moderate Risk',
     'liquidity.critical': 'High Slippage Risk',
+    'filter.time.live': 'Live',
+    'filter.time.1day': '24 Hours',
+    'filter.time.3days': '3 Days',
+    'filter.time.7days': '7 Days',
+    'filter.time.all': 'All',
   },
   'zh-TW': {
     'app.title': 'PolyBall',
@@ -2800,6 +2818,11 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'liquidity.healthy': '流動性健康',
     'liquidity.warning': '中度風險',
     'liquidity.critical': '高滑點風險',
+    'filter.time.live': '即時',
+    'filter.time.1day': '1 天內',
+    'filter.time.3days': '3 天內',
+    'filter.time.7days': '7 天內',
+    'filter.time.all': '全部',
   },
   'zh-CN': {
     'app.title': 'PolyBall',
@@ -2853,9 +2876,14 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'liquidity.healthy': '流动性健康',
     'liquidity.warning': '中度风险',
     'liquidity.critical': '高滑点风险',
+    'filter.time.live': '即时',
+    'filter.time.1day': '1 天内',
+    'filter.time.3days': '3 天内',
+    'filter.time.7days': '7 天内',
+    'filter.time.all': '全部',
   },
   es: {
-    ...REFERRAL_KEYS['en'],
+
     'app.title': 'PolyBall',
     'hero.title.1': 'Predice Deportes.',
     'hero.title.2': 'Gana Cripto.',
@@ -2897,6 +2925,10 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'page.view_faq': 'Ver FAQ',
     'cat.all': 'Todas las Ligas',
     'cat.elite': 'Copas Élite',
+    'cat.worldcup': 'Copa Mundial 2026',
+    'cat.europe': 'Europa',
+    'cat.asia': 'Asia',
+    'cat.england': 'Inglaterra',
     'cat.asian': 'Asiático',
     'cat.european': 'Europeo',
     'cat.americas': 'Américas',
@@ -2909,6 +2941,7 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'liquidity.critical': 'Alto Riesgo de Deslizamiento',
   },
   ar: {
+
     'app.title': 'PolyBall',
     'hero.title.1': 'توقع الرياضة.',
     'hero.title.2': 'اربح العملات الرقمية.',
@@ -2950,6 +2983,10 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'page.view_faq': 'عرض الأسئلة الشائعة',
     'cat.all': 'كل الدوريات',
     'cat.elite': 'كؤوس النخبة',
+    'cat.worldcup': 'كأس العالم 2026',
+    'cat.europe': 'أوروبا',
+    'cat.asia': 'آسيا',
+    'cat.england': 'إنجلترا',
     'cat.asian': 'آسيوي',
     'cat.european': 'أوروبي',
     'cat.americas': 'الأمريكتان',
@@ -2962,7 +2999,7 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'liquidity.critical': 'مخاطر انزلاق عالية',
   },
   fr: {
-    ...REFERRAL_KEYS['en'],
+
     'app.title': 'PolyBall',
     'hero.title.1': 'Prédisez le Sport.',
     'hero.title.2': 'Gagnez des Cryptos.',
@@ -3004,6 +3041,10 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'page.view_faq': 'Voir la FAQ',
     'cat.all': 'Toutes les Ligues',
     'cat.elite': 'Coupes Élite',
+    'cat.worldcup': 'Coupe du Monde 2026',
+    'cat.europe': 'Europe',
+    'cat.asia': 'Asie',
+    'cat.england': 'Angleterre',
     'cat.asian': 'Asie',
     'cat.european': 'Europe',
     'cat.americas': 'Amériques',
@@ -3016,7 +3057,7 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'liquidity.critical': 'Risque Élevé de Glissement',
   },
   ru: {
-    ...REFERRAL_KEYS['en'],
+
     'app.title': 'PolyBall',
     'hero.title.1': 'Прогнозируй спорт.',
     'hero.title.2': 'Выигрывай крипту.',
@@ -3058,6 +3099,10 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'page.view_faq': 'Открыть FAQ',
     'cat.all': 'Все лиги',
     'cat.elite': 'Элитные кубки',
+    'cat.worldcup': 'Чемпионат мира 2026',
+    'cat.europe': 'Европа',
+    'cat.asia': 'Азия',
+    'cat.england': 'Англия',
     'cat.asian': 'Азия',
     'cat.european': 'Европа',
     'cat.americas': 'Америка',
@@ -3070,7 +3115,7 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'liquidity.critical': 'Высокий риск проскальзывания',
   },
   de: {
-    ...REFERRAL_KEYS['en'],
+
     'app.title': 'PolyBall',
     'hero.title.1': 'Sport vorhersagen.',
     'hero.title.2': 'Krypto gewinnen.',
@@ -3112,6 +3157,10 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'page.view_faq': 'FAQ ansehen',
     'cat.all': 'Alle Ligen',
     'cat.elite': 'Elite-Pokale',
+    'cat.worldcup': 'WM 2026',
+    'cat.europe': 'Europa',
+    'cat.asia': 'Asien',
+    'cat.england': 'England',
     'cat.asian': 'Asien',
     'cat.european': 'Europa',
     'cat.americas': 'Amerika',
@@ -3124,6 +3173,7 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'liquidity.critical': 'Hohes Slippage-Risiko',
   },
   ja: {
+
     'app.title': 'PolyBall',
     'hero.title.1': 'スポーツを予想。',
     'hero.title.2': '仮想通貨を獲得。',
@@ -3165,6 +3215,10 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'page.view_faq': 'FAQを見る',
     'cat.all': 'すべてのリーグ',
     'cat.elite': 'エリートカップ',
+    'cat.worldcup': 'ワールドカップ 2026',
+    'cat.europe': 'ヨーロッパ',
+    'cat.asia': 'アジア',
+    'cat.england': 'イングランド',
     'cat.asian': 'アジア',
     'cat.european': 'ヨーロッパ',
     'cat.americas': 'アメリカ',
@@ -3177,6 +3231,7 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'liquidity.critical': '高いスリッページリスク',
   },
   ko: {
+
     'app.title': 'PolyBall',
     'hero.title.1': '스포츠 예측.',
     'hero.title.2': '암호화폐 획득.',
@@ -3218,6 +3273,10 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'page.view_faq': 'FAQ 보기',
     'cat.all': '모든 리그',
     'cat.elite': '엘리트 컵',
+    'cat.worldcup': '월드컵 2026',
+    'cat.europe': '유럽',
+    'cat.asia': '아시아',
+    'cat.england': '잉글랜드',
     'cat.asian': '아시아',
     'cat.european': '유럽',
     'cat.americas': '아메리카',
@@ -3230,6 +3289,7 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'liquidity.critical': '높은 슬리피지 위험',
   },
   pt: {
+
     'app.title': 'PolyBall',
     'hero.title.1': 'Preveja Esportes.',
     'hero.title.2': 'Ganhe Cripto.',
@@ -3271,6 +3331,10 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'page.view_faq': 'Ver FAQ',
     'cat.all': 'Todas as Ligas',
     'cat.elite': 'Copas de Elite',
+    'cat.worldcup': 'Copa do Mundo 2026',
+    'cat.europe': 'Europa',
+    'cat.asia': 'Ásia',
+    'cat.england': 'Inglaterra',
     'cat.asian': 'Asiático',
     'cat.european': 'Europeu',
     'cat.americas': 'Américas',
@@ -3330,6 +3394,7 @@ const BASE_TRANSLATIONS: Record<Language, Record<string, string>> = {
       "liquidity.critical": "Princeps Slippage Risk"
   },
   'th': {
+    ...REFERRAL_KEYS['en'],
     'app.title': 'PolyBall',
     'hero.title.1': 'PolyBall',
     'hero.title.2': 'รับคริปโต',

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "LOG_001",
+    "admin": "admin_super",
+    "action": "UPDATE_ODDS",
+    "target": "Match #2",
+    "details": "Changed odds A from 2.1 to 1.9",
+    "timestamp": "2026-03-19 14:23:10",
+    "ip": "192.168.1.100",
+    "status": "SUCCESS"
+  },
+  {
+    "id": "LOG_002",
+    "admin": "admin_super",
+    "action": "LOGIN",
+    "target": "System",
+    "details": "Admin logged in",
+    "timestamp": "2026-03-19 10:00:05",
+    "ip": "192.168.1.100",
+    "status": "SUCCESS"
+  },
+  {
+    "id": "LOG_003",
+    "admin": "mod_john",
+    "action": "SUSPEND_USER",
+    "target": "User U1003",
+    "details": "Suspicious betting pattern detected",
+    "timestamp": "2026-03-18 16:45:22",
+    "ip": "10.0.0.55",
+    "status": "SUCCESS"
+  },
+  {
+    "id": "LOG_004",
+    "admin": "unknown",
+    "action": "UNAUTHORIZED_ACCESS",
+    "target": "Admin Panel",
+    "details": "Failed login attempt",
+    "timestamp": "2026-03-18 03:12:00",
+    "ip": "45.22.11.9",
+    "status": "FAILED"
+  }
+]
