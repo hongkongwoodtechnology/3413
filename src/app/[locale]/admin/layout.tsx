@@ -1,6 +1,6 @@
 import React from 'react';
 import { LocalizedLink as Link } from "@/components/LocalizedLink"
-import { LayoutDashboard, LineChart, Shield, Users, Wallet, Hexagon } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, LineChart, Shield, Users, Wallet, Hexagon } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/admin', label: '總覽', icon: LayoutDashboard },
@@ -47,9 +47,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <main className="flex-1 bg-neutral-950">
         <div className="sticky top-0 z-20 border-b border-neutral-800 bg-neutral-950/80 backdrop-blur">
           <div className="mx-auto flex max-w-[1440px] items-center justify-between px-6 py-4">
-            <div>
-              <div className="text-xs uppercase tracking-[0.2em] text-neutral-500">Control Center</div>
-              <h1 className="mt-1 text-xl font-semibold tracking-tight text-white">管理員控制台</h1>
+            <div className="flex items-center gap-4">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 rounded-xl border border-neutral-700 bg-neutral-800/60 px-3 py-2 text-sm font-medium text-neutral-300 transition-all hover:border-neutral-600 hover:bg-neutral-700 hover:text-white"
+              >
+                <ArrowLeft size={16} />
+                返回首頁
+              </Link>
+              <div>
+                <div className="text-xs uppercase tracking-[0.2em] text-neutral-500">Control Center</div>
+                <h1 className="mt-1 text-xl font-semibold tracking-tight text-white">管理員控制台</h1>
+              </div>
             </div>
             <div className="rounded-full border border-primary-purple/30 bg-primary-purple/10 px-4 py-2 text-sm font-medium text-primary-purple">
               Role: Super Admin

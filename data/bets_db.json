@@ -326,7 +326,7 @@
       "odds": 1.85,
       "netPayout": 0.037,
       "signature": "2jxsuMwvczFu61mJWAsDwHixTYXkZtJGxmjd7DyCbsWPXhf6afB26x9wm9SNMPbN126mXq1eF4V9w3L1LQ2FsDDP",
-      "status": "pending",
+      "status": "refunded",
       "useBonus": false,
       "timestamp": 1778860381128
     },

@@ -140,6 +140,8 @@
       "home": 0,
       "draw": 0,
       "away": 0
-    }
+    },
+    "refundProcessed": true,
+    "adminSurplus": 0
   }
 }

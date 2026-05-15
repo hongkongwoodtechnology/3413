@@ -1,27 +1,67 @@
-const { DynamicOddsEngine } = require('./src/lib/odds-engine');
+// 測試賠率計算
+const { DynamicOddsEngine } = require('./src/lib/odds-engine.ts');
 
-const engine = new DynamicOddsEngine();
+const engine = new DynamicOddsEngine(0.08, 200);
 
-// First bet
-let realTotalPool = 0;
-let liabilities = { home: 0, draw: 0, away: 0 };
-let betAmount = 10;
+// 模擬第一個投注者投了 10 USDT 到主勝
+const poolsAfterFirstBet = {
+  home: 10,
+  draw: 0,
+  away: 0
+};
 
-// Simulate UI before bet
-let oddsHome = engine.calculateDisplayOdds(realTotalPool, liabilities, 'home');
-let oddsDraw = engine.calculateDisplayOdds(realTotalPool, liabilities, 'draw');
-let oddsAway = engine.calculateDisplayOdds(realTotalPool, liabilities, 'away');
-console.log('Before bet:', { oddsHome, oddsDraw, oddsAway });
+console.log('=== 第一個投注者投注後 (home=10) ===');
+console.log('Pools:', poolsAfterFirstBet);
 
-// Place bet on home
-let projectedOdds = 2.0; // say initial odds
-realTotalPool += betAmount;
-liabilities.home += betAmount * projectedOdds;
+const odds1 = engine.calculateAllDisplayOdds(
+  poolsAfterFirstBet,
+  undefined,
+  undefined,
+  null,
+  undefined,
+  'upcoming',
+  0.92
+);
+console.log('賠率:', odds1);
 
-console.log('After bet state:', { realTotalPool, liabilities });
+// 模擬第二個投注者輸入 5 USDT 到主勝
+const projectedPools = {
+  home: 10 + 5,  // 15
+  draw: 0,
+  away: 0
+};
 
-// Simulate UI after bet
-oddsHome = engine.calculateDisplayOdds(realTotalPool, liabilities, 'home');
-oddsDraw = engine.calculateDisplayOdds(realTotalPool, liabilities, 'draw');
-oddsAway = engine.calculateDisplayOdds(realTotalPool, liabilities, 'away');
-console.log('After bet UI odds:', { oddsHome, oddsDraw, oddsAway });
+console.log('\n=== 第二個投注者輸入 5 USDT 到主勝後 ===');
+console.log('Projected Pools:', projectedPools);
+
+const odds2 = engine.calculateAllDisplayOdds(
+  projectedPools,
+  undefined,
+  undefined,
+  null,
+  undefined,
+  'upcoming',
+  0.92
+);
+console.log('賠率:', odds2);
+
+// 模擬第二個投注者輸入 5 USDT 到和局
+const projectedPoolsDraw = {
+  home: 10,
+  draw: 5,
+  away: 0
+};
+
+console.log('\n=== 第二個投注者輸入 5 USDT 到和局後 ===');
+console.log('Projected Pools:', projectedPoolsDraw);
+
+const odds3 = engine.calculateAllDisplayOdds(
+  projectedPoolsDraw,
+  undefined,
+  undefined,
+  null,
+  undefined,
+  'upcoming',
+  0.92
+);
+console.log('賠率:', odds3);
