@@ -4,12 +4,46 @@
 
 import "@testing-library/jest-dom";
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { fetchLiveMatches } from "@/lib/api";
+import { getTrialUSDTBalance, getUSDTBalance } from "@/lib/solana";
 import Home from "./page";
 
 let mockedLanguage = "en";
 let mockedConnected = false;
+let mockedPublicKey: { toBase58: () => string } | null = null;
+let mockedSendTransaction = jest.fn();
+let mockedSkipChainProgress = false;
+
+const MATCH_FIXTURE = [
+  {
+    id: 101,
+    league: "World Cup",
+    category: "elite",
+    home: "Alpha FC",
+    away: "Beta FC",
+    date: "2026-05-16 20:00",
+    liveMinute: 12,
+    status: "live",
+    score: "0-0",
+    pools: { home: 25, draw: 20, away: 15 },
+    marketData: {
+      realTotalPool: 60,
+      liabilities: { home: 40, draw: 30, away: 20 },
+      pools: { home: 25, draw: 20, away: 15 },
+      attractionWindowUsed: { home: 0, draw: 0, away: 0 },
+      initialOdds: { home: 1.5, draw: 2.5, away: 3.5 },
+    },
+  },
+];
+
+function makeJsonResponse(payload: unknown, ok = true): Response {
+  return {
+    ok,
+    status: ok ? 200 : 403,
+    json: async () => payload,
+  } as Response;
+}
 
 jest.mock("next/dynamic", () => ({
   __esModule: true,
@@ -28,9 +62,9 @@ jest.mock("@solana/wallet-adapter-react", () => ({
     connected: mockedConnected,
     connecting: false,
     disconnecting: false,
-    publicKey: null,
-    wallet: null,
-    sendTransaction: jest.fn(),
+    publicKey: mockedPublicKey,
+    wallet: mockedConnected ? { adapter: { name: "Mock Wallet" } } : null,
+    sendTransaction: mockedSendTransaction,
   }),
   useConnection: () => ({
     connection: {},
@@ -92,6 +126,22 @@ jest.mock("@/lib/odds-engine", () => ({
       return { home: 1.5, draw: 2.5, away: 3.5 };
     }
 
+    calculatePhaseAwareLockedOdds() {
+      return { odds: 1.5, riskLevel: "balanced" };
+    }
+
+    calculateAllDisplayOdds() {
+      return { home: 1.5, draw: 2.5, away: 3.5 };
+    }
+
+    calculateDynamicOdds() {
+      return { odds: 1.5, riskLevel: "balanced" };
+    }
+
+    getMaxBetAmount() {
+      return 999999;
+    }
+
     getMaxPositionRatio() {
       return 0.3;
     }
@@ -112,13 +162,18 @@ jest.mock("@/lib/live-matches-loading", () => ({
 }));
 
 jest.mock("@/lib/bet-progress", () => ({
-  shouldSkipChainProgressForBet: () => false,
+  shouldSkipChainProgressForBet: () => mockedSkipChainProgress,
 }));
 
 jest.mock("@/lib/solana", () => ({
   getUSDTBalance: jest.fn().mockResolvedValue(0),
   getTrialUSDTBalance: jest.fn().mockResolvedValue(0),
-  findAta: jest.fn().mockResolvedValue(null),
+  findAta: jest.fn((_: string, owner: { toBase58?: () => string } | string) => ({
+    toBase58: () =>
+      typeof owner === "string"
+        ? `${owner}-ata`
+        : `${owner.toBase58?.() ?? "owner"}-ata`,
+  })),
 }));
 
 jest.mock("@/lib/wallets", () => ({
@@ -129,10 +184,11 @@ jest.mock("@/lib/wallets", () => ({
   PLATFORM_FEE_RATE: 0.005,
   DEFAULT_COMMISSION_RATE: 0.3,
   POOL_ADDRESS: "pool-address",
-  splitBetAmount: () => ({ houseAmount: 0n, commissionAmount: 0n, poolAmount: 0n }),
+  splitBetAmount: () => ({ pool: 4, house: 0, commission: 0, support: 0 }),
   formatMissingAtaInitializationMessage: () => "missing ata",
   getBoundReferrerStorageKey: (address: string) => `bound_referrer_${address}`,
-  resolvePreferredWalletAddress: () => null,
+  resolvePreferredWalletAddress: (walletAddress: string, phantomAddress: string | null) =>
+    phantomAddress || walletAddress,
 }));
 
 jest.mock("@/lib/bet-mode", () => ({
@@ -155,8 +211,14 @@ jest.mock("@solana/web3.js", () => ({
       return this.value;
     }
   },
-  Transaction: class {},
-  TransactionInstruction: class {},
+  Transaction: class {
+    add() {
+      return this;
+    }
+  },
+  TransactionInstruction: class {
+    constructor(_: unknown) {}
+  },
   ComputeBudgetProgram: {
     setComputeUnitLimit: jest.fn(),
     setComputeUnitPrice: jest.fn(),
@@ -171,10 +233,22 @@ describe("Home referral landing", () => {
     jest.clearAllMocks();
     mockedLanguage = "en";
     mockedConnected = false;
+    mockedPublicKey = null;
+    mockedSendTransaction = jest.fn().mockResolvedValue("sig-111");
+    mockedSkipChainProgress = true;
+    (fetchLiveMatches as jest.Mock).mockResolvedValue([]);
+    (getUSDTBalance as jest.Mock).mockResolvedValue(0);
+    (getTrialUSDTBalance as jest.Mock).mockResolvedValue(0);
     window.history.replaceState({}, "", "/?ref=AQDd735nBNxWxoeNAG7bUn2SA56fennrCYRR1Ykc4fyq");
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ success: true, data: [], balances: { usdt: 0, bonus: 0 } }),
+    global.fetch = jest.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/balance?address=")) {
+        return makeJsonResponse({ success: true, balance: 0 });
+      }
+      if (url.startsWith("/api/bets?address=")) {
+        return makeJsonResponse({ success: true, data: [] });
+      }
+      return makeJsonResponse({ success: true, data: [] });
     }) as jest.Mock;
   });
 
@@ -191,6 +265,7 @@ describe("Home referral landing", () => {
   it("skips referral landing when wallet is connected and starts matches fetching", async () => {
     jest.clearAllMocks();
     mockedConnected = true;
+    mockedPublicKey = { toBase58: () => "wallet-111" };
     window.history.replaceState({}, "", "/?ref=AQDd735nBNxWxoeNAG7bUn2SA56fennrCYRR1Ykc4fyq");
     render(<Home />);
     await waitFor(() => {
@@ -199,5 +274,58 @@ describe("Home referral landing", () => {
     await waitFor(() => {
       expect(fetchLiveMatches).toHaveBeenCalled();
     });
+  });
+
+  it("does not show success or deduct trial balance when /api/bets rejects a trial-funds bet", async () => {
+    mockedConnected = true;
+    mockedPublicKey = { toBase58: () => "wallet-111" };
+    (fetchLiveMatches as jest.Mock).mockResolvedValue(MATCH_FIXTURE);
+    (getUSDTBalance as jest.Mock).mockResolvedValue(100);
+    (getTrialUSDTBalance as jest.Mock).mockResolvedValue(15);
+    window.history.replaceState({}, "", "/");
+    (global.fetch as jest.Mock).mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/balance?address=")) {
+        return makeJsonResponse({ success: true, balance: 100 });
+      }
+      if (url.startsWith("/api/bets?address=")) {
+        return makeJsonResponse({ success: true, data: [] });
+      }
+      if (url === "/api/bets") {
+        return makeJsonResponse(
+          { success: false, error: "體驗金不可作為該場賭池首注" },
+          false
+        );
+      }
+      return makeJsonResponse({ success: true, data: [] });
+    });
+
+    const alertSpy = jest.spyOn(window, "alert").mockImplementation(() => {});
+
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText("15.00 tUSDT")).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Alpha FC")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: /1\.5/ })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "label.trial_funds" }));
+    fireEvent.change(screen.getByPlaceholderText("0.00"), {
+      target: { value: "4" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "btn.confirm" }));
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith(
+        expect.stringContaining("體驗金不可作為該場賭池首注")
+      );
+    });
+
+    expect(screen.queryByText("modal.prediction_placed")).toBeNull();
+    expect(screen.getByText("15.00 tUSDT")).toBeInTheDocument();
   });
 });
