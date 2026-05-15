@@ -946,42 +946,6 @@ export default function Home() {
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
 
-      // 交易成功後，更新前端的狀態與資料庫
-      setMatchesIfChanged(prevMatches => prevMatches.map(m => {
-          if (m.id === selectedMatchId) {
-              const updatedMatch = { ...m };
-              
-              // Update new MarketData if available
-              if (updatedMatch.marketData && projectedOdds) {
-                  const md = updatedMatch.marketData;
-                  const effectivePool = !useBonus ? poolAmountForDisplay : betAmountNum;
-                  updatedMatch.marketData = {
-                      ...md,
-                      // 真實資金進獎池 = base pool + 冷啟動 support，體驗金則全額入池
-                      realTotalPool: md.realTotalPool + effectivePool,
-                      liabilities: {
-                          ...md.liabilities,
-                          [outcome as string]: md.liabilities[outcome as keyof typeof md.liabilities] + (effectivePool * lockedOdds)
-                      },
-                      pools: {
-                          ...md.pools,
-                          [outcome]: md.pools[outcome as keyof typeof md.pools] + effectivePool
-                      }
-                  };
-              }
-              
-              // Update legacy pools for UI compatibility
-              const effectivePoolLegacy = !useBonus ? poolAmountForDisplay : betAmountNum;
-              updatedMatch.pools = {
-                  ...m.pools,
-                  [outcome]: m.pools[outcome as keyof typeof m.pools] + effectivePoolLegacy
-              };
-              
-              return updatedMatch;
-          }
-          return m
-      }))
-
       // Record bet
       const matchInfo = matches.find(m => m.id === selectedMatchId);
       if (matchInfo) {
@@ -1006,8 +970,8 @@ export default function Home() {
               return;
           }
 
-          // Save to backend persistent storage
-          fetch('/api/bets', {
+          // Save to backend persistent storage before mutating local success state.
+          const saveRes = await fetch('/api/bets', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -1017,36 +981,73 @@ export default function Home() {
                   signature: txSignature,
                   liveMinute: matchInfo.liveMinute
               })
-          })
-          .then(async res => {
-              const json = await res.json().catch(() => ({}));
-              if (!res.ok || !json.success) {
-                  console.error('Bet save rejected by server:', json.error || res.statusText);
-                  return;
-              }
-              setBetsRefreshKey(k => k + 1);
+          });
+          const saveJson = await saveRes.json().catch(() => ({}));
+          if (!saveRes.ok || !saveJson.success) {
+              throw new Error(
+                  typeof saveJson.error === 'string' && saveJson.error.length > 0
+                      ? saveJson.error
+                      : saveRes.statusText || 'Failed to save bet to backend.'
+              );
+          }
 
-              if (useBonus && json.data?.id) {
-                  fetch('/api/referral', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                          action: 'record_bonus_bet',
-                          userAddress: currentAddress,
-                          betId: json.data.id,
-                          amount: betAmountNum,
-                      })
-                  })
-                  .then(res => res.json())
-                  .then(data => {
-                      if (data.success && typeof data.newBalance === 'number') {
-                          setTrialBalance(data.newBalance);
-                      }
-                  })
-                  .catch(err => console.error('Failed to persist bonus bet ledger:', err));
+          setMatchesIfChanged(prevMatches => prevMatches.map(m => {
+              if (m.id === selectedMatchId) {
+                  const updatedMatch = { ...m };
+                  
+                  // Update new MarketData if available
+                  if (updatedMatch.marketData && projectedOdds) {
+                      const md = updatedMatch.marketData;
+                      const effectivePool = !useBonus ? poolAmountForDisplay : betAmountNum;
+                      updatedMatch.marketData = {
+                          ...md,
+                          // 真實資金進獎池 = base pool + 冷啟動 support，體驗金則全額入池
+                          realTotalPool: md.realTotalPool + effectivePool,
+                          liabilities: {
+                              ...md.liabilities,
+                              [outcome as string]: md.liabilities[outcome as keyof typeof md.liabilities] + (effectivePool * lockedOdds)
+                          },
+                          pools: {
+                              ...md.pools,
+                              [outcome]: md.pools[outcome as keyof typeof md.pools] + effectivePool
+                          }
+                      };
+                  }
+                  
+                  // Update legacy pools for UI compatibility
+                  const effectivePoolLegacy = !useBonus ? poolAmountForDisplay : betAmountNum;
+                  updatedMatch.pools = {
+                      ...m.pools,
+                      [outcome]: m.pools[outcome as keyof typeof m.pools] + effectivePoolLegacy
+                  };
+                  
+                  return updatedMatch;
               }
-          })
-          .catch(err => console.error('Failed to save bet to backend:', err));
+              return m
+          }))
+
+          setMyBets(prev => [newBet, ...prev]);
+          setBetsRefreshKey(k => k + 1);
+
+          if (useBonus && saveJson.data?.id) {
+              fetch('/api/referral', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                      action: 'record_bonus_bet',
+                      userAddress: currentAddress,
+                      betId: saveJson.data.id,
+                      amount: betAmountNum,
+                  })
+              })
+              .then(res => res.json())
+              .then(data => {
+                  if (data.success && typeof data.newBalance === 'number') {
+                      setTrialBalance(data.newBalance);
+                  }
+              })
+              .catch(err => console.error('Failed to persist bonus bet ledger:', err));
+          }
 
           // Notify Referral API to process potential bonus (Only for real money bets)
           if (!useBonus) {
@@ -1087,9 +1088,9 @@ export default function Home() {
               // 實際應用中這裡應該重新 fetchBalance，此處為了 UI 流暢先樂觀扣除
               setBalance(prev => prev - betAmountNum);
           }
-      }
 
-      setTxStatus("success")
+          setTxStatus("success")
+      }
       
       // Reset after showing success
       setTimeout(() => {
