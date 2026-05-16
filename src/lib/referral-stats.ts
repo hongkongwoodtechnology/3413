@@ -14,14 +14,15 @@ export function calculateReferralStats(params: {
   withdrawable: string;
 } {
   const now = params.now ?? Date.now();
-  const activeCommissions = params.commissions.filter((commission) => commission.referee !== 'WITHDRAWAL');
-  const approvedCommissions = activeCommissions.filter((commission) => commission.status === 'approved');
+  const approvedCommissions = params.commissions.filter(
+    (commission) => commission.referee !== 'WITHDRAWAL' && commission.status === 'approved'
+  );
 
-  const totalEarned = activeCommissions.reduce(
+  const totalEarned = approvedCommissions.reduce(
     (sum, commission) => sum + (parseFloat(commission.commission) || 0),
     0
   );
-  const monthEarned = activeCommissions.reduce((sum, commission) => {
+  const monthEarned = approvedCommissions.reduce((sum, commission) => {
     const ts = Date.parse(commission.timestamp);
     if (!Number.isFinite(ts)) return sum;
     if (now - ts > 30 * 24 * 60 * 60 * 1000) return sum;

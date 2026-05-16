@@ -40,6 +40,20 @@ type UserData = {
     commissionRate?: number; // 新增：管理員設定的專屬推薦手續費分成 (預設 0.3，即 30%)
 };
 
+type BetRecord = {
+    id: string;
+    userAddress: string;
+    matchId: number | string;
+    matchName: string;
+    outcome: 'home' | 'draw' | 'away';
+    amount: number;
+    odds?: number;
+    signature?: string | null;
+    status?: string;
+    useBonus: boolean;
+    timestamp: number;
+};
+
 // 檔案式資料庫路徑
 const DB_FILE_PATH = path.join(process.cwd(), 'data', 'referral_db.json');
 
@@ -52,8 +66,7 @@ const RPC_ENDPOINTS = [
 const USDT_DECIMALS = 6;
 const USDT_MINT = new PublicKey(process.env.NEXT_PUBLIC_USDT_MINT || "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB");
 const POOL_WALLET = new PublicKey(process.env.NEXT_PUBLIC_POOL_WALLET || "9FfHYyK8ZKsA82BPtierU4sWmwTS8QTGqrGqtTt6tEu7");
-const HOUSE_WALLET = new PublicKey(process.env.NEXT_PUBLIC_HOUSE_WALLET || "2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K");
-const COMMISSION_WALLET = new PublicKey(process.env.NEXT_PUBLIC_COMMISSION_WALLET || "2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K");
+const HOUSE_WALLET = new PublicKey(process.env.NEXT_PUBLIC_HOUSE_WALLET || "3veQRXa6347BofJAAGYrFuw2125E17P2LgAozCo7hXc2");
 const ZERO = BigInt(0);
 const RETIRED_REFERRAL_ADMIN = '2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K';
 
@@ -115,15 +128,12 @@ async function verifySplitTransfer(params: {
     
     const poolAta = await getAssociatedTokenAddress(USDT_MINT, POOL_WALLET, true);
     const houseAta = await getAssociatedTokenAddress(USDT_MINT, HOUSE_WALLET, true);
-    const commissionAta = await getAssociatedTokenAddress(USDT_MINT, COMMISSION_WALLET, true);
-    
     const expected = new Map<string, bigint>();
     const addExpected = (dest: string, amount: bigint) => {
         expected.set(dest, (expected.get(dest) || ZERO) + amount);
     };
     addExpected(poolAta.toBase58(), toRawAmount(params.poolAmount));
-    addExpected(houseAta.toBase58(), toRawAmount(params.houseAmount));
-    addExpected(commissionAta.toBase58(), toRawAmount(params.commissionAmount));
+    addExpected(houseAta.toBase58(), toRawAmount(params.houseAmount + params.commissionAmount));
     
     const transfersByDest = new Map<string, bigint>();
     
@@ -186,6 +196,19 @@ function loadDatabase(): Record<string, UserData> {
         }
     } catch (error) {
         console.error('Error loading referral database:', error);
+    }
+    return {};
+}
+
+function loadBetsDatabase(): Record<string, BetRecord[]> {
+    try {
+        const betsPath = path.join(process.cwd(), 'data', 'bets_db.json');
+        if (fs.existsSync(betsPath)) {
+            const data = fs.readFileSync(betsPath, 'utf-8');
+            return JSON.parse(data);
+        }
+    } catch (error) {
+        console.error('Error loading bets database for referral reconciliation:', error);
     }
     return {};
 }
@@ -263,7 +286,7 @@ function syncUserStats(userData: UserData) {
     userData.stats.withdrawable = calculatedStats.withdrawable;
 }
 
-function reconcileUserCommissions(userData: UserData) {
+function reconcileUserCommissions(userData: UserData, betsDb: Record<string, BetRecord[]>) {
     let updated = 0;
 
     for (const commission of userData.commissions) {
@@ -271,9 +294,27 @@ function reconcileUserCommissions(userData: UserData) {
         if (commission.status !== 'pending') continue;
         if (!commission.signature) continue;
 
-        commission.status = 'approved';
-        commission.approvedAt = new Date().toISOString();
-        updated += 1;
+        const matchedBet = Object.values(betsDb)
+            .flat()
+            .find((bet) => bet.signature === commission.signature);
+
+        if (!matchedBet?.status) continue;
+
+        if (matchedBet.status === 'win' || matchedBet.status === 'loss') {
+            commission.status = 'approved';
+            commission.approvedAt = new Date().toISOString();
+            updated += 1;
+            continue;
+        }
+
+        if (matchedBet.status === 'refunded') {
+            commission.status = 'settled';
+            commission.approvedAt = undefined;
+            commission.settledAt = new Date().toISOString();
+            commission.fee = '0.000000';
+            commission.commission = '0.000000';
+            updated += 1;
+        }
     }
 
     return updated;
@@ -301,9 +342,14 @@ export async function GET(request: Request) {
     await new Promise(resolve => setTimeout(resolve, 800));
 
     const db = loadDatabase();
+    const betsDb = loadBetsDatabase();
     const userData = getOrCreateUserData(address, db);
     
     let modified = false;
+    const reconciled = reconcileUserCommissions(userData, betsDb);
+    if (reconciled > 0) {
+        modified = true;
+    }
     for (const c of userData.commissions) {
         if (c.status === 'settled' && !c.signature && c.referee !== 'WITHDRAWAL') {
             c.status = 'pending';
@@ -423,24 +469,21 @@ export async function POST(request: Request) {
                 const ref = referrerData.referees[refereeIndex];
                 ref.totalVolumeValue += betAmount;
                 
-                const commissionEarned = actualCommission;
                 const platformFee = actualHouse + actualCommission;
-                
-                ref.earnedCommissionValue += commissionEarned;
                 
                 referrerData.commissions.unshift({
                     id: `comm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
                     referee: userAddress,
                     betAmount: betAmount.toFixed(6),
                     fee: platformFee.toFixed(6),
-                    commission: commissionEarned.toFixed(6),
+                    commission: actualCommission.toFixed(6),
                     timestamp: new Date().toISOString(),
                     status: 'pending' as const,
                     signature
                 });
                 syncUserStats(referrerData);
                 
-                console.log(`[COMMISSION] ✅ ${commissionEarned.toFixed(6)} USDT verified on-chain | Referrer: ${referrerAddress} | Bettor: ${userAddress} | Bet: ${betAmount} USDT`);
+                console.log(`[COMMISSION] ✅ ${actualCommission.toFixed(6)} USDT verified on-chain and marked pending | Referrer: ${referrerAddress} | Bettor: ${userAddress} | Bet: ${betAmount} USDT`);
                 
                 if (ref.totalVolumeValue >= 1000 && !ref.rewardIssued) {
                     userData.balances.bonus += 100;
@@ -465,7 +508,8 @@ export async function POST(request: Request) {
             }
 
             const userData = getOrCreateUserData(userAddress, db);
-            const updated = reconcileUserCommissions(userData);
+            const betsDb = loadBetsDatabase();
+            const updated = reconcileUserCommissions(userData, betsDb);
             syncUserStats(userData);
             saveDatabase(db);
 

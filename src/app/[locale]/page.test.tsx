@@ -211,6 +211,8 @@ jest.mock("@/lib/wallets", () => ({
   DEFAULT_COMMISSION_RATE: 0.3,
   POOL_ADDRESS: "pool-address",
   splitBetAmount: () => ({ pool: 4, house: 0, commission: 0, support: 0 }),
+  getCombinedPlatformFeeAmount: ({ house, commission }: { house: number; commission: number }) =>
+    house + commission,
   formatMissingAtaInitializationMessage: () => "missing ata",
   getBoundReferrerStorageKey: (address: string) => `bound_referrer_${address}`,
   resolvePreferredWalletAddress: (walletAddress: string, phantomAddress: string | null) =>
@@ -390,5 +392,46 @@ describe("[locale] Home referral landing", () => {
     });
 
     expect(screen.getByRole("button", { name: "btn.confirm" })).toBeEnabled();
+  });
+
+  it("does not leave a fake successful bet in the localized UI when /api/bets persistence fails", async () => {
+    mockedLanguage = "zh-TW";
+    mockedConnected = true;
+    mockedPublicKey = { toBase58: () => "wallet-111" };
+    (fetchLiveMatches as jest.Mock).mockResolvedValue(MATCH_FIXTURE);
+    (getUSDTBalance as jest.Mock).mockResolvedValue(100);
+    (getTrialUSDTBalance as jest.Mock).mockResolvedValue(15);
+    window.history.replaceState({}, "", "/zh-TW");
+
+    global.fetch = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.startsWith("/api/balance?address=")) {
+        return makeJsonResponse({ success: true, balance: 100 });
+      }
+      if (url.startsWith("/api/bets?address=")) {
+        return makeJsonResponse({ success: true, data: [] });
+      }
+      if (url === "/api/bets" && init?.method === "POST") {
+        return makeJsonResponse({ success: false, error: "backend rejected" }, false);
+      }
+      return makeJsonResponse({ success: true, data: [] });
+    }) as jest.Mock;
+
+    window.alert = jest.fn();
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText("15.00 tUSDT")).toBeInTheDocument();
+    });
+
+    const confirmButton = await openTrialPredictionModal();
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalled();
+    });
+
+    expect(screen.queryByText("btn.success")).not.toBeInTheDocument();
+    expect(screen.getByText("此期間沒有投注記錄")).toBeInTheDocument();
   });
 });

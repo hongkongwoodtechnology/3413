@@ -40,6 +40,10 @@ jest.mock('@/components/LanguageProvider', () => ({
         'referral.tab.all': '全部',
         'referral.tab.settled': '已结算',
         'referral.tab.pending': '待结算',
+        'referral.tab.approved': '待打款',
+        'referral.status.pending': '待对账',
+        'referral.status.approved': '待打款',
+        'referral.status.settled': '已结算',
         'referral.page.bonus_balance': '体验金余额',
         'referral.page.processing': '处理中...',
         'btn.close': '返回',
@@ -214,5 +218,51 @@ describe('ReferralPage withdraw card', () => {
     });
 
     expect(screen.getByText('+0.17 USDT')).toBeInTheDocument();
+  });
+
+  it('shows approved commissions as withdrawable and renders the approved status label', async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: buildReferralPayload({
+          stats: {
+            total: '0.250000 USDT',
+            withdrawable: '0.080000 USDT',
+            month: '0.250000 USDT',
+            friends: 1,
+          },
+          commissions: [
+            {
+              id: 'comm-approved-1',
+              referee: 'ApprovedReferee111111111111111111111111',
+              betAmount: '5.000000',
+              fee: '0.400000',
+              commission: '0.080000',
+              timestamp: '2026-05-16T08:00:00.000Z',
+              status: 'approved',
+            },
+          ],
+          referees: [
+            {
+              id: 'ref-approved-1',
+              address: 'ApprovedReferee111111111111111111111111',
+              joinDateValue: 0,
+              totalVolumeValue: 0,
+              earnedCommissionValue: 0,
+            },
+          ],
+        }),
+      }),
+    });
+
+    render(<ReferralPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('待打款')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: '待打款' })).toBeInTheDocument();
+    expect(screen.getAllByText('0.080000 USDT').length).toBeGreaterThan(0);
+    expect(screen.getByText('投注金额: 5.000000 USDT')).toBeInTheDocument();
   });
 });

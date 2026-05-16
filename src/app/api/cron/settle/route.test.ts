@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 
-const ADMIN_ADDRESS = "2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K";
+const ADMIN_ADDRESS = "3veQRXa6347BofJAAGYrFuw2125E17P2LgAozCo7hXc2";
 
 type MockFileMap = Record<string, string>;
 
@@ -218,6 +218,43 @@ describe("cron settle payouts", () => {
     expect(savedBetsDb.BonusWinner111111111111111111111111111111[0].paidOut).toBe(true);
   });
 
+  it("refunds the full original gross stake for refunded bets", async () => {
+    mockFiles["bets_db.json"] = JSON.stringify({
+      RefundUser111111111111111111111111111111111: [
+        {
+          id: "bet-refund-1",
+          userAddress: "RefundUser111111111111111111111111111111111",
+          matchId: 202,
+          matchName: "Refund Match",
+          outcome: "home",
+          amount: 10,
+          odds: 2,
+          netPayout: 18.4,
+          status: "refunded",
+          useBonus: false,
+          timestamp: 1234567890,
+          paidOut: false,
+        },
+      ],
+    });
+
+    const { GET } = await import("./route");
+    const responsePromise = GET(new Request("http://localhost/api/cron/settle", {
+      headers: { "x-cron-secret": "test-cron-secret" },
+    }));
+    await jest.runAllTimersAsync();
+    const response = await responsePromise;
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.refunds).toBe(1);
+    expect(json.totalUsdtPaid).toBe(10);
+
+    const savedBetsDb = JSON.parse(mockFiles["bets_db.json"]);
+    expect(savedBetsDb.RefundUser111111111111111111111111111111111[0].paidOut).toBe(true);
+  });
+
   it("fails closed when CRON_SECRET is not configured", async () => {
     delete process.env.CRON_SECRET;
 
@@ -227,5 +264,52 @@ describe("cron settle payouts", () => {
 
     expect(response.status).toBe(503);
     expect(json.error).toMatch(/CRON_SECRET/);
+  });
+
+  it("defers referral commission payout to the referral withdraw flow", async () => {
+    mockFiles["bets_db.json"] = "{}";
+    mockFiles["referral_db.json"] = JSON.stringify({
+      Referrer111: {
+        stats: {
+          total: "0.080000 USDT",
+          withdrawable: "0.080000 USDT",
+          month: "0.080000 USDT",
+          friends: 1,
+        },
+        commissions: [
+          {
+            id: "comm-approved-1",
+            referee: "Referee111",
+            betAmount: "5.000000",
+            fee: "0.400000",
+            commission: "0.080000",
+            timestamp: "2026-05-16T00:00:00.000Z",
+            status: "approved",
+            signature: "sig-approved-1",
+            approvedAt: "2026-05-16T00:05:00.000Z",
+          },
+        ],
+        referees: [],
+        balances: { usdt: 0, bonus: 0 },
+      },
+    });
+
+    const { GET } = await import("./route");
+    const responsePromise = GET(
+      new Request("http://localhost/api/cron/settle", {
+        headers: { "x-cron-secret": "test-cron-secret" },
+      })
+    );
+    await jest.runAllTimersAsync();
+    const response = await responsePromise;
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.commissions).toBe(0);
+    expect(json.message).toBe("No pending payouts");
+
+    const savedReferralDb = JSON.parse(mockFiles["referral_db.json"]);
+    expect(savedReferralDb.Referrer111.commissions[0].status).toBe("approved");
   });
 });

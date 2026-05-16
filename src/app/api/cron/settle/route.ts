@@ -4,8 +4,9 @@ import https from "https";
 import fs from "fs";
 import path from "path";
 import { getNetPayoutFromLockedOdds } from "@/lib/bet-mode";
+import { calculateReferralStats } from "@/lib/referral-stats";
 
-const ADMIN_ADDRESS = "2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K";
+const ADMIN_ADDRESS = process.env.ADMIN_WALLET_ADDRESS?.trim() || "3veQRXa6347BofJAAGYrFuw2125E17P2LgAozCo7hXc2";
 const USDT_MINT = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB";
 const USDT_DECIMALS = 6;
 const PLATFORM_FEE_RATE = 0.08;
@@ -268,6 +269,22 @@ export async function GET(request: Request) {
   const logs: string[] = [];
 
   try {
+    const cronSecret = process.env.CRON_SECRET?.trim();
+    if (!cronSecret) {
+      return NextResponse.json({
+        success: false,
+        error: "CRON_SECRET not configured",
+      }, { status: 503 });
+    }
+
+    const providedSecret = request.headers.get("x-cron-secret");
+    if (providedSecret !== cronSecret) {
+      return NextResponse.json({
+        success: false,
+        error: "Unauthorized",
+      }, { status: 401 });
+    }
+
     const secretKeyStr = process.env.ADMIN_SECRET_KEY?.trim();
     if (!secretKeyStr) {
       return NextResponse.json({
@@ -299,7 +316,6 @@ export async function GET(request: Request) {
     const adminAta = findAta(usdtMint, adminPubkey);
 
     const betsDb = loadDb("bets_db.json") as Record<string, BetRecord[]>;
-    const referralDb = loadDb("referral_db.json");
 
     // === 情況1：單邊投注 → 退還全額本金（不扣手續費） ===
     const refunds: SplitEntry[] = [];
@@ -325,7 +341,7 @@ export async function GET(request: Request) {
     const wins: SplitEntry[] = [];
     for (const [, bets] of Object.entries(betsDb)) {
       for (const bet of bets) {
-        if (bet.status === "win" && !bet.paidOut && !bet.useBonus && bet.amount > 0) {
+        if (bet.status === "win" && !bet.paidOut && bet.amount > 0) {
           const winAmount = typeof bet.netPayout === "number"
             ? bet.netPayout
             : getNetPayoutFromLockedOdds(bet.amount, bet.odds || 1, bet.useBonus);
@@ -346,36 +362,17 @@ export async function GET(request: Request) {
 
     const allSplits = [...refunds, ...wins];
 
-    // === 佣金 ===
-    interface PendingCommission { referrerAddress: string; earnedValue: number; refId: string; }
-    const commissions: PendingCommission[] = [];
-    for (const [address, data] of Object.entries(referralDb || {}) as [string, any][]) {
-      if (data?.referees) {
-        for (const ref of data.referees) {
-          if ((ref.earnedCommissionValue || 0) > 0.000001 && !ref.commissionPaid) {
-            commissions.push({
-              referrerAddress: address,
-              earnedValue: ref.earnedCommissionValue,
-              refId: ref.id,
-            });
-          }
-        }
-      }
-    }
-    logs.push(`Commissions (佣金): ${commissions.length}`);
+    logs.push("Commissions (佣金): deferred to referral withdraw flow");
 
     // === Admin ATA 餘額檢查 ===
     const adminAtaBalance = await getTokenBalance(adminAta);
     const totalNeededRaw = allSplits.reduce((sum, s) => sum + s.rawAmount, BigInt(0));
-    const commissionsNeededRaw = commissions.reduce((sum, c) =>
-      sum + BigInt(Math.floor(c.earnedValue * Math.pow(10, USDT_DECIMALS))), BigInt(0)
-    );
-    const grandTotalNeeded = totalNeededRaw + commissionsNeededRaw;
+    const grandTotalNeeded = totalNeededRaw;
     const adminBalanceUi = Number(adminAtaBalance) / Math.pow(10, USDT_DECIMALS);
     const totalNeededUi = Number(grandTotalNeeded) / Math.pow(10, USDT_DECIMALS);
 
     logs.push(`Admin ATA balance: ${adminBalanceUi.toFixed(4)} USDT`);
-    logs.push(`Total needed: ${totalNeededUi.toFixed(4)} USDT (payouts + commissions)`);
+    logs.push(`Total needed: ${totalNeededUi.toFixed(4)} USDT (payouts only)`);
 
     if (adminAtaBalance < grandTotalNeeded) {
       const shortfall = (Number(grandTotalNeeded - adminAtaBalance) / Math.pow(10, USDT_DECIMALS)).toFixed(4);
@@ -387,14 +384,14 @@ export async function GET(request: Request) {
         shortfall: Number(shortfall),
         pendingRefunds: refunds.length,
         pendingWins: wins.length,
-        pendingCommissions: commissions.length,
+        pendingCommissions: 0,
         message: `Admin ATA (${adminAta.toBase58()}) 只有 ${adminBalanceUi.toFixed(4)} USDT，但需支付 ${totalNeededUi.toFixed(4)} USDT。\n\n請確保所有投注資金已轉到 Admin ATA（舊投注在 Pool ATA 9FfHYyK... 的需手動轉移）。`,
         elapsed: Date.now() - startTime,
         logs,
       }, { status: 402 });
     }
 
-    if (allSplits.length === 0 && commissions.length === 0) {
+    if (allSplits.length === 0) {
       return NextResponse.json({
         success: true, refunds: 0, wins: 0, commissions: 0, elapsed: Date.now() - startTime,
         logs, message: "No pending payouts",
@@ -407,59 +404,15 @@ export async function GET(request: Request) {
     const winDone = wins.filter(w => betsDb[w.userAddress]?.find(b => b.id === w.betId)?.paidOut).length;
     logs.push(`Splits: refunds=${refundDone}/${refunds.length} wins=${winDone}/${wins.length} (${splitResult.totalUsdt.toFixed(4)} USDT total)`);
 
-    // === 處理佣金 ===
-    let commSuccess = 0;
-    let commFailed = 0;
-    for (const comm of commissions) {
-      try {
-        const refPubkey = new PublicKey(comm.referrerAddress);
-        const refAta = findAta(usdtMint, refPubkey);
-        const rawAmt = BigInt(Math.floor(comm.earnedValue * Math.pow(10, USDT_DECIMALS)));
-        if (rawAmt <= BigInt(0)) continue;
-
-        const refAtaExists = await checkAtaExists(refAta);
-        const blockhash = await getBlockhash();
-
-        const tx = new Transaction();
-        tx.feePayer = adminPubkey;
-        tx.recentBlockhash = blockhash;
-        tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 }));
-        if (!refAtaExists) tx.add(createAtaInstruction(adminPubkey, refAta, refPubkey, usdtMint));
-        tx.add(splTransferInstruction(adminAta, refAta, adminPubkey, rawAmt));
-
-        const sig = await sendAndConfirm(adminKeypair, tx, `comm_${comm.refId}`);
-        console.log(`[AutoPayout] 💰 Commission ${comm.earnedValue.toFixed(6)} USDT → ${comm.referrerAddress.slice(0, 8)}... | tx: ${sig}`);
-
-        if (referralDb) {
-          const userData = referralDb[comm.referrerAddress];
-          if (userData?.referees) {
-            for (const ref of userData.referees) {
-              if (ref.id === comm.refId || ref.address === comm.referrerAddress) {
-                ref.commissionPaid = true;
-                ref.earnedCommissionValue = 0;
-                break;
-              }
-            }
-          }
-        }
-        commSuccess++;
-      } catch (e: any) {
-        commFailed++;
-        console.error(`[AutoPayout] ❌ Commission failed: ${comm.referrerAddress} - ${e.message}`);
-      }
-    }
-    logs.push(`Commissions: ${commSuccess}/${commissions.length} success`);
-
     saveDb("bets_db.json", betsDb);
-    if (referralDb) saveDb("referral_db.json", referralDb);
 
     return NextResponse.json({
       success: true,
       refunds: refundDone,
       wins: winDone,
-      commissions: commSuccess,
+      commissions: 0,
       totalUsdtPaid: Math.round(splitResult.totalUsdt * 1e6) / 1e6,
-      failed: splitResult.failed + commFailed,
+      failed: splitResult.failed,
       errors: splitResult.errors,
       elapsed: Date.now() - startTime,
       logs,

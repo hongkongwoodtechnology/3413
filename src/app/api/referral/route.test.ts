@@ -23,6 +23,7 @@ class MockRequest {
 }
 
 let mockReferralDb = '{}';
+let mockBetsDb = '{}';
 const mockGetAssociatedTokenAddress = jest.fn(async (_mint: unknown, owner: { toBase58: () => string }) => ({
   toBase58: () => `ata-${owner.toBase58()}`,
 }));
@@ -37,12 +38,18 @@ jest.mock('fs', () => ({
       if (normalized.endsWith('/data/referral_db.json')) {
         return mockReferralDb;
       }
+      if (normalized.endsWith('/data/bets_db.json')) {
+        return mockBetsDb;
+      }
       return '{}';
     }),
     writeFileSync: jest.fn((filePath: string, data: string) => {
       const normalized = String(filePath).replace(/\\/g, '/');
       if (normalized.endsWith('/data/referral_db.json')) {
         mockReferralDb = data;
+      }
+      if (normalized.endsWith('/data/bets_db.json')) {
+        mockBetsDb = data;
       }
     }),
   },
@@ -79,7 +86,7 @@ function mockVerifiedSplitTransfer(params: {
   commissionAmount: number;
 }) {
   const poolDestination = 'ata-9FfHYyK8ZKsA82BPtierU4sWmwTS8QTGqrGqtTt6tEu7';
-  const feeDestination = 'ata-2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K';
+  const feeDestination = `ata-${CURRENT_ADMIN_ADDRESS}`;
 
   return jest.spyOn(Connection.prototype, 'getParsedTransaction').mockResolvedValue({
     meta: {
@@ -119,6 +126,7 @@ function mockVerifiedSplitTransfer(params: {
 describe('Referral API', () => {
   beforeEach(() => {
     mockReferralDb = '{}';
+    mockBetsDb = '{}';
     jest.restoreAllMocks();
     delete process.env.ADMIN_WALLET_ADDRESS;
     delete process.env.NEXT_PUBLIC_HOUSE_WALLET;
@@ -299,8 +307,13 @@ describe('Referral API', () => {
     expect(json.error).toBe('Missing parameters');
   });
 
-  it('creates pending commissions on place_bet and promotes them to approved via reconcile', async () => {
-    jest.spyOn(Connection.prototype, 'getParsedTransaction').mockResolvedValue(null as any);
+  it('creates pending commissions on place_bet and keeps them non-withdrawable before final settlement', async () => {
+    mockVerifiedSplitTransfer({
+      userAddress: 'FhehP5xXeHrMSFZkti2vAXDm4ZJeqXNu3vARGCTV8pkf',
+      poolAmount: 4.6,
+      houseAmount: 0.28,
+      commissionAmount: 0.12,
+    });
 
     const referrer = 'AQDd735nBNxWxoeNAG7bUn2SA56fennrCYRR1Ykc4fyq';
     const referee = 'FhehP5xXeHrMSFZkti2vAXDm4ZJeqXNu3vARGCTV8pkf';
@@ -335,6 +348,66 @@ describe('Referral API', () => {
     expect(json.data.commissions[0].status).toBe('pending');
     expect(json.data.stats.withdrawable).toBe('0.000000 USDT');
 
+    res = await GET(new Request(`http://localhost:3000/api/referral?address=${referrer}`));
+    json = await res.json();
+    expect(json.data.commissions[0].status).toBe('pending');
+    expect(json.data.stats.total).toBe('0.000000 USDT');
+    expect(json.data.stats.withdrawable).toBe('0.000000 USDT');
+  });
+
+  it('promotes pending commission to approved when the matching bet finishes as loss', async () => {
+    const referrer = 'AQDd735nBNxWxoeNAG7bUn2SA56fennrCYRR1Ykc4fyq';
+    const referee = 'FhehP5xXeHrMSFZkti2vAXDm4ZJeqXNu3vARGCTV8pkf';
+
+    await POST(
+      new Request('http://localhost:3000/api/referral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: referrer, newRefereeAddress: referee }),
+      })
+    );
+
+    mockVerifiedSplitTransfer({
+      userAddress: referee,
+      poolAmount: 4.6,
+      houseAmount: 0.28,
+      commissionAmount: 0.12,
+    });
+
+    await POST(
+      new Request('http://localhost:3000/api/referral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'place_bet',
+          userAddress: referee,
+          referrerAddress: referrer,
+          betAmount: 5,
+          poolAmount: 4.6,
+          houseAmount: 0.28,
+          commissionAmount: 0.12,
+          signature: 'mock-signature-three-state',
+        }),
+      })
+    );
+
+    mockBetsDb = JSON.stringify({
+      [referee]: [
+        {
+          id: 'bet-loss-1',
+          userAddress: referee,
+          matchId: 1001,
+          matchName: 'A vs B',
+          outcome: 'home',
+          amount: 5,
+          signature: 'mock-signature-three-state',
+          status: 'loss',
+          useBonus: false,
+          timestamp: Date.now(),
+        },
+      ],
+    });
+
     const reconcileRes = await POST(
       new Request('http://localhost:3000/api/referral', {
         method: 'POST',
@@ -354,6 +427,47 @@ describe('Referral API', () => {
     expect(json.data.commissions[0].status).toBe('approved');
     expect(json.data.stats.total).toBe('0.120000 USDT');
     expect(json.data.stats.withdrawable).toBe('0.120000 USDT');
+  });
+
+  it('accepts combined fee custody into the house wallet for new bets', async () => {
+    const referrer = 'AQDd735nBNxWxoeNAG7bUn2SA56fennrCYRR1Ykc4fyq';
+    const referee = 'FhehP5xXeHrMSFZkti2vAXDm4ZJeqXNu3vARGCTV8pkf';
+
+    await POST(
+      new Request('http://localhost:3000/api/referral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: referrer, newRefereeAddress: referee }),
+      })
+    );
+
+    mockVerifiedSplitTransfer({
+      userAddress: referee,
+      poolAmount: 4.6,
+      houseAmount: 0.28,
+      commissionAmount: 0.12,
+    });
+
+    const res = await POST(
+      new Request('http://localhost:3000/api/referral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'place_bet',
+          userAddress: referee,
+          referrerAddress: referrer,
+          betAmount: 5,
+          poolAmount: 4.6,
+          houseAmount: 0.28,
+          commissionAmount: 0.12,
+          signature: 'combined-fee-bet',
+        }),
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.success).toBe(true);
   });
 
   it('allows the current admin wallet to airdrop bonus', async () => {

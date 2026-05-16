@@ -7,12 +7,12 @@ export const POOL_ADDRESS = new PublicKey(
 
 // 莊家抽水地址 (House Edge / Rake) — 平台 8% 手續費中 70% 歸平台
 export const HOUSE_WALLET = new PublicKey(
-  process.env.NEXT_PUBLIC_HOUSE_WALLET || "2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K"
+  process.env.NEXT_PUBLIC_HOUSE_WALLET || "3veQRXa6347BofJAAGYrFuw2125E17P2LgAozCo7hXc2"
 );
 
 // 佣金地址 (Commission) — 平台 8% 手續費中 30% 歸推薦人/佣金池
 export const COMMISSION_WALLET = new PublicKey(
-  process.env.NEXT_PUBLIC_COMMISSION_WALLET || "2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K"
+  process.env.NEXT_PUBLIC_COMMISSION_WALLET || "3veQRXa6347BofJAAGYrFuw2125E17P2LgAozCo7hXc2"
 );
 
 // USDT Mint 地址 (Solana Mainnet)
@@ -42,6 +42,13 @@ export function splitBetAmount(
   const house = platformFee - commission;
   const pool = betAmount - platformFee;
   return { pool, house, commission, support: 0, platformFee };
+}
+
+export function getCombinedPlatformFeeAmount(split: {
+  house: number;
+  commission: number;
+}): number {
+  return Math.round((split.house + split.commission) * 1e6) / 1e6;
 }
 
 /**

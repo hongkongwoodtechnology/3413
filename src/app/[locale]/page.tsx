@@ -27,7 +27,7 @@ const NewsCenterPage = dynamic(() => import("@/components/NewsCenterPage").then(
 import { Suspense } from "react"
 import { PublicKey, Transaction, TransactionInstruction, ComputeBudgetProgram, SystemProgram } from "@solana/web3.js"
 import { getUSDTBalance, getTrialUSDTBalance, findAta as findAtaClient } from "@/lib/solana"
-import { HOUSE_WALLET, COMMISSION_WALLET, USDT_MINT, USDT_DECIMALS, PLATFORM_FEE_RATE, DEFAULT_COMMISSION_RATE, splitBetAmount, POOL_ADDRESS, formatMissingAtaInitializationMessage, getBoundReferrerStorageKey, resolvePreferredWalletAddress } from "@/lib/wallets"
+import { HOUSE_WALLET, USDT_MINT, USDT_DECIMALS, PLATFORM_FEE_RATE, DEFAULT_COMMISSION_RATE, splitBetAmount, POOL_ADDRESS, formatMissingAtaInitializationMessage, getBoundReferrerStorageKey, resolvePreferredWalletAddress, getCombinedPlatformFeeAmount } from "@/lib/wallets"
 import { getReturnRateForBetMode } from "@/lib/bet-mode"
 import { countActiveOutcomes } from "@/lib/market-rules"
 import { TEAM_NAMES, LEAGUES } from "@/lib/dictionaries"
@@ -823,19 +823,19 @@ export default function Home() {
         supportAmountForDisplay = supportAmount;
 
         const rawPoolAmount = BigInt(Math.floor(poolAmount * Math.pow(10, USDT_DECIMALS)));
-        const rawHouseAmount = BigInt(Math.floor(houseAmount * Math.pow(10, USDT_DECIMALS)));
-        const rawCommissionAmount = BigInt(Math.floor(commissionAmount * Math.pow(10, USDT_DECIMALS)));
+        const rawCombinedFeeAmount = BigInt(
+          Math.floor(getCombinedPlatformFeeAmount({ house: houseAmount, commission: commissionAmount }) * Math.pow(10, USDT_DECIMALS))
+        );
         
         let actualPublicKey = publicKey;
         if (!actualPublicKey) {
             throw new Error("Wallet public key is not available");
         }
 
-        // 1) Derive ATAs — pool / house / commission 分流到各自收款地址
+        // 1) Derive ATAs — pool / combined platform fee 分流到各自收款地址
         const userATA = findAtaClient(USDT_MINT, actualPublicKey);
         const poolATA = findAtaClient(USDT_MINT, POOL_ADDRESS);
         const adminATA = findAtaClient(USDT_MINT, HOUSE_WALLET);
-        const commissionATA = findAtaClient(USDT_MINT, COMMISSION_WALLET);
 
         // 2) Fetch blockhash
         console.log("[Bet] Fetching blockhash...");
@@ -846,19 +846,18 @@ export default function Home() {
         console.log("[Bet] Checking destination ATAs...");
         const atasNeeded = await checkAtasNeeded([
           { ata: poolATA, owner: POOL_ADDRESS, label: '獎池 Pool (派彩用)' },
-          { ata: adminATA, owner: HOUSE_WALLET, label: '平台淨收益收款' },
-          { ata: commissionATA, owner: COMMISSION_WALLET, label: '平台佣金收款' },
+          { ata: adminATA, owner: HOUSE_WALLET, label: '平台暫收手續費' },
         ]);
         const confirmedNeeded = atasNeeded.filter(a => !a.unknown);
         const numAtasConfirmed = confirmedNeeded.length;
 
         if (numAtasConfirmed > 0) {
           const ataCostLamports = estimateAtaCost(numAtasConfirmed);
-          const gasEstLamports = estimateGasCost(3 + numAtasConfirmed);
+          const gasEstLamports = estimateGasCost(2 + numAtasConfirmed);
           const totalSolNeeded = (ataCostLamports + gasEstLamports) / 1e9;
 
           const actualAddress = actualPublicKey.toBase58();
-          const isAdminUser = actualAddress === HOUSE_WALLET.toBase58() || actualAddress === COMMISSION_WALLET.toBase58();
+          const isAdminUser = actualAddress === HOUSE_WALLET.toBase58();
           if (!isAdminUser) {
             throw new Error(formatMissingAtaInitializationMessage(confirmedNeeded.map((entry) => entry.label)));
           }
@@ -892,11 +891,8 @@ export default function Home() {
         }));
 
         transaction.add(splTransferInstruction(userATA, poolATA, actualPublicKey, rawPoolAmount));
-        if (rawHouseAmount > 0n) {
-          transaction.add(splTransferInstruction(userATA, adminATA, actualPublicKey, rawHouseAmount));
-        }
-        if (rawCommissionAmount > 0n) {
-          transaction.add(splTransferInstruction(userATA, commissionATA, actualPublicKey, rawCommissionAmount));
+        if (rawCombinedFeeAmount > 0n) {
+          transaction.add(splTransferInstruction(userATA, adminATA, actualPublicKey, rawCombinedFeeAmount));
         }
 
         // 5) Sign & send via wallet adapter (skip preflight: server-side already validates)
@@ -961,8 +957,6 @@ export default function Home() {
               timestamp: Date.now()
           };
           
-          setMyBets(prev => [newBet, ...prev]);
-
           // 取得目前有效的帳號 (防錯處理)
           const currentAddress = getActualAddress();
           if (!currentAddress) {

@@ -1,7 +1,7 @@
 import { calculateReferralStats } from './referral-stats';
 
 describe('calculateReferralStats', () => {
-  it('counts pending, approved, and settled toward total and month while only approved is withdrawable', () => {
+  it('counts only approved commission toward total, month, and withdrawable', () => {
     const now = Date.parse('2026-05-16T12:00:00.000Z');
 
     const stats = calculateReferralStats({
@@ -34,8 +34,8 @@ describe('calculateReferralStats', () => {
       now,
     });
 
-    expect(stats.total).toBe('0.250000 USDT');
-    expect(stats.month).toBe('0.250000 USDT');
+    expect(stats.total).toBe('0.080000 USDT');
+    expect(stats.month).toBe('0.080000 USDT');
     expect(stats.withdrawable).toBe('0.080000 USDT');
   });
 });

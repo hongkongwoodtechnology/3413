@@ -16,14 +16,14 @@ interface Commission {
     fee: string;
     commission: string;
     timestamp: string;
-    status: 'settled' | 'pending';
+    status: 'pending' | 'approved' | 'settled';
 }
 
 export default function ReferralPage() {
     const { connected, publicKey } = useWallet();
     const { t, language } = useLanguage();
     const [copied, setCopied] = useState(false);
-    const [activeTab, setActiveTab] = useState<'all' | 'settled' | 'pending'>('all');
+    const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'settled'>('all');
     const [timeFilter, setTimeFilter] = useState<'1d' | '3d' | '7d' | '30d' | '3m' | 'all'>('all');
     const [commissionPage, setCommissionPage] = useState(1);
     const commissionsPerPage = 8;
@@ -470,7 +470,7 @@ export default function ReferralPage() {
                                 </div>
 
                                 <div className="flex flex-wrap gap-2">
-                                    {(['all', 'settled', 'pending'] as const).map(tab => (
+                                    {(['all', 'pending', 'approved', 'settled'] as const).map(tab => (
                                         <button
                                             key={tab}
                                             onClick={() => { setActiveTab(tab); setCommissionPage(1); }}
@@ -499,13 +499,13 @@ export default function ReferralPage() {
                                         paginatedCommissions.map((comm) => (
                                             <div key={comm.id} className="flex items-center justify-between p-5 bg-neutral-800/30 rounded-xl border border-neutral-800 hover:bg-neutral-800/50 transition-colors">
                                                 <div className="flex items-center gap-4">
-                                                    <div className={`h-2.5 w-2.5 rounded-full ${comm.status === 'settled' ? 'bg-success' : 'bg-neutral-500'}`} />
+                                                    <div className={`h-2.5 w-2.5 rounded-full ${comm.status === 'settled' ? 'bg-success' : comm.status === 'approved' ? 'bg-primary-blue' : 'bg-neutral-500'}`} />
                                                     <div>
                                                         <div className="text-base font-bold text-white font-mono">{comm.referee.length > 12 ? comm.referee.slice(0, 4) + '...' + comm.referee.slice(-4) : comm.referee}</div>
                                                         <div className="text-sm text-neutral-500 flex flex-wrap items-center gap-2">
                                                             <span>{comm.timestamp}</span>
-                                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${comm.status === 'settled' ? 'bg-success/15 text-success' : 'bg-neutral-700 text-neutral-300'}`}>
-                                                                {t(`referral.tab.${comm.status}`)}
+                                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${comm.status === 'settled' ? 'bg-success/15 text-success' : comm.status === 'approved' ? 'bg-primary-blue/15 text-primary-blue' : 'bg-neutral-700 text-neutral-300'}`}>
+                                                                {t(`referral.status.${comm.status}`)}
                                                             </span>
                                                         </div>
                                                         <div className="text-sm text-neutral-400 mt-1">

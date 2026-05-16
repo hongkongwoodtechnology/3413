@@ -58,6 +58,15 @@ describe('wallet destination helpers', () => {
     expect(split.platformFee).toBeCloseTo(0.08);
   });
 
+  it('keeps pool separate while exposing house and commission components', () => {
+    const split = splitBetAmount(0.04, 0.3);
+
+    expect(split.pool).toBeCloseTo(0.0368, 6);
+    expect(split.house).toBeCloseTo(0.00224, 6);
+    expect(split.commission).toBeCloseTo(0.00096, 6);
+    expect(split.platformFee).toBeCloseTo(0.0032, 6);
+  });
+
   it('removes legacy admin address entries from referral-like data', () => {
     expect(
       stripLegacyAdminEntries({
