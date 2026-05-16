@@ -10,7 +10,7 @@
       "odds": 15,
       "netPayout": 0.03,
       "signature": null,
-      "status": "pending",
+      "status": "win",
       "useBonus": true,
       "timestamp": 1778873825140
     },
@@ -340,7 +340,7 @@
       "odds": 1.2267,
       "netPayout": 0.036801,
       "signature": "3zTQfjXHf8m5AR3e6xMwA3RWnAvNF5SwMH2TLxRPZ7Fh92ZXmTzJWcMv7wNy1exbYFuUjuRUvFCJF748JmSTDNVP",
-      "status": "pending",
+      "status": "loss",
       "useBonus": false,
       "timestamp": 1778873616796
     },
@@ -354,7 +354,7 @@
       "odds": 1.75,
       "netPayout": 0.0175,
       "signature": "2QUckDznPf3KCz41VJVsMxCCMcMgGh9XyjMcTfxpMXSJi6UBWqpDpZKnTsSJRroR8NAVwTxbQ7axvdp5gsRZuqmk",
-      "status": "pending",
+      "status": "loss",
       "useBonus": false,
       "timestamp": 1778873572852
     },

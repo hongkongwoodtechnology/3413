@@ -140,7 +140,12 @@
       "home": 0,
       "draw": 0.002,
       "away": 0.03
-    }
+    },
+    "refundProcessed": true,
+    "settled": true,
+    "finalWinner": "draw",
+    "finalScore": "0-0",
+    "adminSurplus": 0.00864
   },
   "1775290": {
     "realTotalPool": 0.02,

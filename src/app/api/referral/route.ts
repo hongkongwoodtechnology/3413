@@ -16,8 +16,11 @@ interface Commission {
     fee: string;
     commission: string;
     timestamp: string;
-    status: 'settled' | 'pending';
+    status: 'pending' | 'approved' | 'settled';
     signature?: string;
+    approvedAt?: string;
+    settledAt?: string;
+    settlementTx?: string;
 }
 
 interface Referee {
@@ -175,7 +178,11 @@ function loadDatabase(): Record<string, UserData> {
         }
         if (fs.existsSync(DB_FILE_PATH)) {
             const data = fs.readFileSync(DB_FILE_PATH, 'utf-8');
-            return JSON.parse(data);
+            const parsed = JSON.parse(data) as Record<string, UserData>;
+            for (const address of Object.keys(parsed)) {
+                normalizeUserData(address, parsed);
+            }
+            return parsed;
         }
     } catch (error) {
         console.error('Error loading referral database:', error);
@@ -214,8 +221,7 @@ function saveDatabase(db: Record<string, UserData>) {
     }
 }
 
-// 初始化預設資料
-function getOrCreateUserData(address: string, db: Record<string, UserData>) {
+function normalizeUserData(address: string, db: Record<string, UserData>): UserData {
     if (!db[address]) {
         db[address] = {
             stats: {
@@ -228,9 +234,59 @@ function getOrCreateUserData(address: string, db: Record<string, UserData>) {
             referees: [],
             balances: { usdt: 0, bonus: 0 }
         };
+    }
+
+    const userData = db[address];
+    userData.balances = userData.balances ?? { usdt: 0, bonus: 0 };
+    userData.commissions = (userData.commissions ?? []).map((commission) => ({
+        ...commission,
+        status: commission.status ?? 'pending',
+    }));
+    userData.referees = (userData.referees ?? []).map((referee) => ({
+        ...referee,
+        rewardIssued: referee.rewardIssued ?? false,
+    }));
+    userData.stats = {
+        total: userData.stats?.total ?? '0 USDT',
+        withdrawable: userData.stats?.withdrawable ?? '0 USDT',
+        month: userData.stats?.month ?? '0 USDT',
+        friends: userData.stats?.friends ?? userData.referees.length,
+    };
+
+    return userData;
+}
+
+function syncUserStats(userData: UserData) {
+    const calculatedStats = calculateReferralStats({ commissions: userData.commissions });
+    userData.stats.total = calculatedStats.total;
+    userData.stats.month = calculatedStats.month;
+    userData.stats.withdrawable = calculatedStats.withdrawable;
+}
+
+function reconcileUserCommissions(userData: UserData) {
+    let updated = 0;
+
+    for (const commission of userData.commissions) {
+        if (commission.referee === 'WITHDRAWAL') continue;
+        if (commission.status !== 'pending') continue;
+        if (!commission.signature) continue;
+
+        commission.status = 'approved';
+        commission.approvedAt = new Date().toISOString();
+        updated += 1;
+    }
+
+    return updated;
+}
+
+// 初始化預設資料
+function getOrCreateUserData(address: string, db: Record<string, UserData>) {
+    const existed = Boolean(db[address]);
+    const userData = normalizeUserData(address, db);
+    if (!existed) {
         saveDatabase(db);
     }
-    return db[address];
+    return userData;
 }
 
 export async function GET(request: Request) {
@@ -359,6 +415,7 @@ export async function POST(request: Request) {
                         status: 'pending' as const,
                         signature
                     });
+                    syncUserStats(referrerData);
                     saveDatabase(db);
                     return NextResponse.json({ success: false, error: verification.error });
                 }
@@ -378,17 +435,10 @@ export async function POST(request: Request) {
                     fee: platformFee.toFixed(6),
                     commission: commissionEarned.toFixed(6),
                     timestamp: new Date().toISOString(),
-                    status: 'settled' as const,
+                    status: 'pending' as const,
                     signature
                 });
-                
-                const prevTotal = parseFloat(referrerData.stats.total) || 0;
-                const prevMonth = parseFloat(referrerData.stats.month) || 0;
-                const prevWithdrawable = parseFloat(referrerData.stats.withdrawable) || 0;
-                
-                referrerData.stats.total = (prevTotal + commissionEarned).toFixed(6) + ' USDT';
-                referrerData.stats.withdrawable = (prevWithdrawable + commissionEarned).toFixed(6) + ' USDT';
-                referrerData.stats.month = (prevMonth + commissionEarned).toFixed(6) + ' USDT';
+                syncUserStats(referrerData);
                 
                 console.log(`[COMMISSION] ✅ ${commissionEarned.toFixed(6)} USDT verified on-chain | Referrer: ${referrerAddress} | Bettor: ${userAddress} | Bet: ${betAmount} USDT`);
                 
@@ -405,6 +455,21 @@ export async function POST(request: Request) {
             }
 
             return NextResponse.json({ success: true, message: 'Bet processed' });
+        }
+
+        if (body.action === 'reconcile_commissions') {
+            const { userAddress } = body;
+
+            if (!userAddress) {
+                return NextResponse.json({ error: 'Missing userAddress' }, { status: 400 });
+            }
+
+            const userData = getOrCreateUserData(userAddress, db);
+            const updated = reconcileUserCommissions(userData);
+            syncUserStats(userData);
+            saveDatabase(db);
+
+            return NextResponse.json({ success: true, updated });
         }
 
         // 處理管理員空投體驗金 (Airdrop tUSDT)
@@ -455,6 +520,10 @@ export async function POST(request: Request) {
         const { address, newRefereeAddress } = body;
 
         if (!address && !body.action) {
+            return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
+        }
+
+        if (!body.action && address && !newRefereeAddress) {
             return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
         }
         

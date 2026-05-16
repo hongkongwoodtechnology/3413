@@ -18,7 +18,7 @@
       "total": "0.381120 USDT",
       "withdrawable": "0.000000 USDT",
       "month": "0.381120 USDT",
-      "friends": 2
+      "friends": 1
     },
     "commissions": [
       {
@@ -432,14 +432,6 @@
     ],
     "referees": [
       {
-        "id": "ref-auto-1778860381482",
-        "address": "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg",
-        "joinDateValue": 0,
-        "totalVolumeValue": 0,
-        "earnedCommissionValue": 0,
-        "rewardIssued": false
-      },
-      {
         "id": "ref-new-1776791794973",
         "address": "4gtU6Dn9TGKQR4S3CotQwwqenuV533bUL5z2LBhMEsLN",
         "joinDateValue": 0,
@@ -509,10 +501,18 @@
       "total": "0.000000 USDT",
       "withdrawable": "0.000000 USDT",
       "month": "0.000000 USDT",
-      "friends": 3
+      "friends": 4
     },
     "commissions": [],
     "referees": [
+      {
+        "id": "ref-auto-1778860381482",
+        "address": "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg",
+        "joinDateValue": 0,
+        "totalVolumeValue": 0,
+        "earnedCommissionValue": 0,
+        "rewardIssued": false
+      },
       {
         "id": "ref-new-1778861124951",
         "address": "9CC3oeJ22u7gkFV5sZTtGDBMfgzZSwpppwSrGF2ddQTq",

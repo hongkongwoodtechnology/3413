@@ -2,7 +2,7 @@ type ReferralCommission = {
   referee: string;
   commission: string;
   timestamp: string;
-  status: 'settled' | 'pending';
+  status: 'pending' | 'approved' | 'settled';
 };
 
 export function calculateReferralStats(params: {
@@ -15,7 +15,7 @@ export function calculateReferralStats(params: {
 } {
   const now = params.now ?? Date.now();
   const activeCommissions = params.commissions.filter((commission) => commission.referee !== 'WITHDRAWAL');
-  const settledCommissions = activeCommissions.filter((commission) => commission.status === 'settled');
+  const approvedCommissions = activeCommissions.filter((commission) => commission.status === 'approved');
 
   const totalEarned = activeCommissions.reduce(
     (sum, commission) => sum + (parseFloat(commission.commission) || 0),
@@ -27,17 +27,14 @@ export function calculateReferralStats(params: {
     if (now - ts > 30 * 24 * 60 * 60 * 1000) return sum;
     return sum + (parseFloat(commission.commission) || 0);
   }, 0);
-  const settledEarned = settledCommissions.reduce(
+  const approvedEarned = approvedCommissions.reduce(
     (sum, commission) => sum + (parseFloat(commission.commission) || 0),
     0
   );
-  const withdrawn = params.commissions
-    .filter((commission) => commission.referee === 'WITHDRAWAL' && commission.status === 'settled')
-    .reduce((sum, commission) => sum + Math.abs(parseFloat(commission.commission) || 0), 0);
 
   return {
     total: `${totalEarned.toFixed(6)} USDT`,
     month: `${monthEarned.toFixed(6)} USDT`,
-    withdrawable: `${Math.max(0, settledEarned - withdrawn).toFixed(6)} USDT`,
+    withdrawable: `${approvedEarned.toFixed(6)} USDT`,
   };
 }
