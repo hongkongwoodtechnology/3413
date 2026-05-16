@@ -32,6 +32,7 @@ The existing project plan already describes a trial-funds cap, but the running A
 - Apply only to trial-funds bets where `useBonus === true`.
 - Do not change real-money bet limits or payout logic.
 - Do not create a separate pool for trial funds.
+- `first bet` means the first accepted bet of the entire match pool, not a user's first bet on that match.
 
 ### Cap basis
 
@@ -168,6 +169,7 @@ If `currentTotalReal <= 0`, then:
 - any positive trial-funds bet is rejected by this rule.
 
 This is intentional and avoids trial-funds cold-start exposure outside the cap model.
+This check is based on whether the match pool itself has any accepted real-money liquidity, not on whether the current user has bet before.
 
 ## Data Flow
 

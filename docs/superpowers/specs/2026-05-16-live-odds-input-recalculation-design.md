@@ -40,6 +40,7 @@ This creates two problems:
 - The cap base only uses the current real-money pool, not trial-funds stake.
 - When the real-money pool grows, the allowed cumulative trial-funds amount grows with it.
 - Trial-funds still cannot be the first accepted bet of a match.
+- The term `first bet` means the first accepted bet of the entire match pool, not the first bet of a specific user.
 - Real-money bets are not constrained by the trial-funds cap rule.
 - The behavior should match the same odds model used for quote and order locking as closely as possible.
 
@@ -156,6 +157,7 @@ Those guardrails are:
 - the cap base is the current real-money pool for the match
 - accepted real-money growth increases the trial-funds cap dynamically
 - trial-funds cannot establish the first real pool state for a match
+- the `first bet` definition is pool-wide for that match, not user-specific
 - real-money bets are not evaluated by this trial-funds cap branch
 
 This means the UI may update projected odds immediately for trial-funds typing, but the backend acceptance rules remain governed by the current cap and first-bet restrictions.
@@ -231,6 +233,7 @@ Special case:
 - If split calculation yields an invalid number, fall back to normal displayed odds rather than rendering broken values.
 - If the typed trial-funds amount would exceed the dynamic `15%` cap, preserve current enforcement behavior at order time.
 - If the match has no real-money pool yet, trial-funds preview may still render the current allowed display state, but order-time first-bet rejection remains unchanged.
+- Interpret first-bet checks against the entire match pool state, not the current user's personal history.
 
 ## Scope
 
