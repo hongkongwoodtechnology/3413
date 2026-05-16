@@ -10,6 +10,7 @@ The selected behavior is:
 - all three outcome buttons update together: home, draw, away
 - real-money preview uses the same net-to-pool amount as the actual betting flow
 - trial-funds preview continues using the full entered amount
+- first-bet and single-sided initial-odds states do not live-recalculate the displayed odds
 
 ## Problem
 
@@ -33,6 +34,7 @@ This creates two problems:
 - All three buttons must update together, not only the selected outcome.
 - Real-money input preview uses post-fee pool contribution.
 - Trial-funds input preview uses full entered amount.
+- First-bet input does not immediately change displayed odds.
 - The behavior should match the same odds model used for quote and order locking as closely as possible.
 
 ## Approaches Considered
@@ -156,6 +158,7 @@ If the match remains in an initial or single-sided phase:
 
 - continue showing `initialOdds`
 - do not create misleading pseudo-live projected odds
+- this includes first-bet input on an otherwise empty or still single-sided market
 
 Once the market is in a normal multi-sided phase:
 
@@ -194,6 +197,10 @@ If implementation complexity makes this inconsistent, prefer preserving current 
 6. The page recalculates `home/draw/away` display odds for that card.
 7. The three outcome buttons update immediately.
 
+Special case:
+
+- if the current market is still in first-bet or single-sided initial-odds mode, skip live odds mutation and continue rendering `initialOdds`
+
 ## Error Handling
 
 - If the typed amount is empty or invalid, show normal non-projected odds.
@@ -229,7 +236,7 @@ Recommended focused coverage:
 - trial-funds mode uses full entered amount
 - non-selected cards do not project based on the active input
 - zero or empty input restores normal displayed odds
-- single-sided market still shows initial odds instead of false projected live odds
+- first-bet and single-sided market still show initial odds instead of false projected live odds
 
 Manual verification:
 
@@ -239,6 +246,7 @@ Manual verification:
 4. Confirm the three odds buttons update immediately on each change.
 5. Compare real-money mode and trial-funds mode to confirm different pool contribution behavior.
 6. Clear the input and confirm the buttons return to normal market odds.
+7. Open an empty or still single-sided market and confirm first-bet typing does not change the initial displayed odds.
 
 ## Expected Outcome
 
@@ -248,3 +256,4 @@ After this change:
 - the three outcome buttons remain in sync
 - real-money previews reflect post-fee pool impact
 - displayed button odds better match the actual pricing model used for betting
+- first-bet displays remain stable at initial odds until the market leaves the initial single-sided phase
