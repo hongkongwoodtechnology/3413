@@ -11,6 +11,7 @@ The selected behavior is:
 - real-money preview uses the same net-to-pool amount as the actual betting flow
 - trial-funds preview continues using the full entered amount
 - first-bet and single-sided initial-odds states do not live-recalculate the displayed odds
+- trial-funds guardrails remain unchanged while adding live button updates
 
 ## Problem
 
@@ -35,6 +36,11 @@ This creates two problems:
 - Real-money input preview uses post-fee pool contribution.
 - Trial-funds input preview uses full entered amount.
 - First-bet input does not immediately change displayed odds.
+- Trial-funds match cap remains cumulative `15%` of the current real-money pool for that match.
+- The cap base only uses the current real-money pool, not trial-funds stake.
+- When the real-money pool grows, the allowed cumulative trial-funds amount grows with it.
+- Trial-funds still cannot be the first accepted bet of a match.
+- Real-money bets are not constrained by the trial-funds cap rule.
 - The behavior should match the same odds model used for quote and order locking as closely as possible.
 
 ## Approaches Considered
@@ -140,6 +146,20 @@ For trial-funds bets:
 
 This makes the displayed odds track the actual economic impact of the order instead of the raw typed amount.
 
+### 3.5. Trial-funds companion rules
+
+The new live button refresh behavior must preserve the existing trial-funds product guardrails.
+
+Those guardrails are:
+
+- the match-wide trial-funds cap remains `15%`
+- the cap base is the current real-money pool for the match
+- accepted real-money growth increases the trial-funds cap dynamically
+- trial-funds cannot establish the first real pool state for a match
+- real-money bets are not evaluated by this trial-funds cap branch
+
+This means the UI may update projected odds immediately for trial-funds typing, but the backend acceptance rules remain governed by the current cap and first-bet restrictions.
+
 ### 4. Three-button synchronization
 
 Once the projected pool increment is derived, the card should recompute and display:
@@ -182,6 +202,7 @@ If the typed amount would breach an existing risk rule:
 
 - keep current warning behavior for the selected quote and order action
 - button display may still reflect the projected market movement, as long as the order action remains correctly blocked
+- this includes trial-funds cap rejection and trial-funds first-bet rejection
 
 If implementation complexity makes this inconsistent, prefer preserving current blocking behavior over adding new UI states in this pass.
 
@@ -208,6 +229,8 @@ Special case:
 - If no outcome is selected, the page may keep normal odds or preserve current focused-card behavior; do not invent a new interaction model in this pass.
 - If market data is missing, keep the current fallback logic and do not crash the card.
 - If split calculation yields an invalid number, fall back to normal displayed odds rather than rendering broken values.
+- If the typed trial-funds amount would exceed the dynamic `15%` cap, preserve current enforcement behavior at order time.
+- If the match has no real-money pool yet, trial-funds preview may still render the current allowed display state, but order-time first-bet rejection remains unchanged.
 
 ## Scope
 
@@ -217,6 +240,7 @@ In scope:
 - synchronized update of home/draw/away buttons on the focused card
 - use of net pool contribution for real-money projection
 - preservation of current trial-funds preview semantics
+- preservation of current trial-funds cap and first-bet restrictions
 - focused regression tests
 
 Out of scope:
@@ -237,6 +261,8 @@ Recommended focused coverage:
 - non-selected cards do not project based on the active input
 - zero or empty input restores normal displayed odds
 - first-bet and single-sided market still show initial odds instead of false projected live odds
+- real-money bets remain unaffected by the trial-funds cap rule
+- trial-funds cap basis remains tied to current real-money pool growth
 
 Manual verification:
 
@@ -247,6 +273,8 @@ Manual verification:
 5. Compare real-money mode and trial-funds mode to confirm different pool contribution behavior.
 6. Clear the input and confirm the buttons return to normal market odds.
 7. Open an empty or still single-sided market and confirm first-bet typing does not change the initial displayed odds.
+8. Grow the real-money pool and confirm the trial-funds allowance grows with it.
+9. Confirm real-money bets are not blocked by the trial-funds cap behavior.
 
 ## Expected Outcome
 
@@ -257,3 +285,4 @@ After this change:
 - real-money previews reflect post-fee pool impact
 - displayed button odds better match the actual pricing model used for betting
 - first-bet displays remain stable at initial odds until the market leaves the initial single-sided phase
+- live trial-funds previews coexist with the existing 15% cap and first-bet restrictions without changing their product meaning
