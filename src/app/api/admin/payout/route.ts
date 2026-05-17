@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { requireAdminAuth } from "@/lib/security/auth";
 
 interface BetRecord {
   id: string;
@@ -15,6 +16,8 @@ interface BetRecord {
   useBonus: boolean;
   timestamp: number;
   paidOut?: boolean;
+  archived?: boolean;
+  legacyPayout?: boolean;
 }
 
 interface PayoutEntry {
@@ -46,6 +49,11 @@ function saveBetsDb(db: Record<string, BetRecord[]>) {
 
 export async function GET() {
   try {
+    const auth = await requireAdminAuth(new Request("http://localhost/api/admin/payout"));
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const db = loadBetsDb();
     const payouts: PayoutEntry[] = [];
 
@@ -97,6 +105,11 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const { action, userAddresses } = await request.json();
 
     if (action === "mark_paid") {

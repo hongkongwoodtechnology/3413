@@ -44,9 +44,6 @@ export function getAdminAddresses(): string[] {
   if (fromEnv) addresses.push(fromEnv);
   const fromHouse = process.env.NEXT_PUBLIC_HOUSE_WALLET?.trim();
   if (fromHouse) addresses.push(fromHouse);
-  if (addresses.length === 0) {
-    addresses.push('3veQRXa6347BofJAAGYrFuw2125E17P2LgAozCo7hXc2');
-  }
   return [...new Set(addresses)];
 }
 

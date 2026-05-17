@@ -387,7 +387,7 @@ export default function Home() {
 
   // Admin Check
   const isAdmin = useMemo(() => {
-    return connected && publicKey?.toBase58() === '2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K';
+    return connected && publicKey?.toBase58() === HOUSE_WALLET.toBase58();
   }, [connected, publicKey]);
 
   // Helper to get actual address for Phantom multi-account edge case
@@ -937,7 +937,7 @@ export default function Home() {
         }));
 
         transaction.add(splTransferInstruction(userATA, poolATA, actualPublicKey, rawPoolAmount));
-        if (rawCombinedFeeAmount > 0n) {
+        if (rawCombinedFeeAmount > BigInt(0)) {
           transaction.add(splTransferInstruction(userATA, adminATA, actualPublicKey, rawCombinedFeeAmount));
         }
 

@@ -6,7 +6,7 @@ import { useLanguage } from "@/components/LanguageProvider"
 import { Gift, ShieldCheck, TrendingUp, Users } from "lucide-react"
 
 interface ReferralLandingPageProps {
-  referrerId: string;
+  referrerId: string | null;
   onSkip: () => void;
 }
 
@@ -20,7 +20,7 @@ export function ReferralLandingPage({ referrerId, onSkip }: ReferralLandingPageP
   }
 
   // Helper to format the wallet address
-  const formatAddress = (address: string) => {
+  const formatAddress = (address: string | null) => {
     if (!address || address.length < 10) return address;
     return `${address.slice(0, 4)}...${address.slice(-4)}`;
   };

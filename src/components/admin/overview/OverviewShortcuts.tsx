@@ -5,11 +5,31 @@ type ShortcutItem = {
   href: string;
 };
 
+type LegacyShortcutItem = {
+  label: string;
+  href: string;
+};
+
 type OverviewShortcutsProps = {
+  items?: ShortcutItem[] | LegacyShortcutItem[];
   shortcuts?: ShortcutItem[];
 };
 
-export function OverviewShortcuts({ shortcuts = defaultShortcuts }: OverviewShortcutsProps) {
+function normalizeShortcuts(items?: ShortcutItem[] | LegacyShortcutItem[]): ShortcutItem[] {
+  if (!items || items.length === 0) return defaultShortcuts;
+
+  return items.map((item) => {
+    if ('title' in item) return item;
+    return {
+      title: item.label,
+      description: item.label,
+      icon: '→',
+      href: item.href,
+    };
+  });
+}
+
+export function OverviewShortcuts({ items, shortcuts = normalizeShortcuts(items) }: OverviewShortcutsProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {shortcuts.map((shortcut) => (

@@ -86,32 +86,87 @@ describe("admin payout queue", () => {
     expect(json.error).toBe("Authentication required");
   });
 
-  it("shows trial-funds winning bets in the pending payout list for authorized admins", async () => {
+  it("excludes trial-funds winning bets from the pending payout list", async () => {
     const response = await GET(new Request("http://localhost/api/admin/payout"));
     const json = await response.json();
 
     expect(response.status).toBe(200);
     expect(json.success).toBe(true);
-    expect(json.count).toBe(1);
-    expect(json.totalOwed).toBe(25);
-    expect(json.payouts[0]).toMatchObject({
-      betId: "bet-bonus-win-1",
-      userAddress: "BonusWinner111111111111111111111111111111",
-      type: "win",
-      winAmount: 25,
+    expect(json.count).toBe(0);
+    expect(json.totalOwed).toBe(0);
+    expect(json.payouts).toEqual([]);
+  });
+
+  it("archives unsigned legacy bets for authorized admins", async () => {
+    mockBetsDb = JSON.stringify({
+      LegacyArchive111111111111111111111111111111: [
+        {
+          id: "bet-legacy-archive-1",
+          userAddress: "LegacyArchive111111111111111111111111111111",
+          matchId: 202,
+          matchName: "Legacy Match",
+          outcome: "home",
+          amount: 15,
+          status: "pending",
+          useBonus: false,
+          timestamp: 1234567890,
+          paidOut: false,
+          signature: null,
+        },
+      ],
+    });
+
+    const response = await POST(new Request("http://localhost/api/admin/payout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "archive_old_bets" }),
+    }) as any);
+    const json = await response.json();
+    const savedDb = JSON.parse(mockBetsDb);
+
+    expect(response.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.archived).toBe(1);
+    expect(savedDb.LegacyArchive111111111111111111111111111111[0]).toMatchObject({
+      archived: true,
+      paidOut: true,
     });
   });
 
-  it("rejects the removed legacy payout action", async () => {
+  it("marks pre-cutoff legacy wins for manual payout handling", async () => {
+    mockBetsDb = JSON.stringify({
+      LegacyWinner1111111111111111111111111111111: [
+        {
+          id: "bet-legacy-win-1",
+          userAddress: "LegacyWinner1111111111111111111111111111111",
+          matchId: 303,
+          matchName: "Legacy Final",
+          outcome: "away",
+          amount: 12,
+          odds: 2.2,
+          status: "win",
+          useBonus: false,
+          timestamp: new Date("2026-05-18T12:00:00Z").getTime(),
+          paidOut: false,
+        },
+      ],
+    });
+
     const response = await POST(new Request("http://localhost/api/admin/payout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "mark_legacy_wins" }),
     }) as any);
     const json = await response.json();
+    const savedDb = JSON.parse(mockBetsDb);
 
-    expect(response.status).toBe(400);
-    expect(json.success).toBe(false);
-    expect(json.error).toBe("Unknown action");
+    expect(response.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.marked).toBe(1);
+    expect(json.affectedUsers).toBe(1);
+    expect(savedDb.LegacyWinner1111111111111111111111111111111[0]).toMatchObject({
+      legacyPayout: true,
+      paidOut: true,
+    });
   });
 });

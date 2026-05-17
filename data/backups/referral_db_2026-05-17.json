@@ -448,9 +448,9 @@
   },
   "AQDd735nBNxWxoeNAG7bUn2SA56fennrCYRR1Ykc4fyq": {
     "stats": {
-      "total": "0.002160 USDT",
-      "withdrawable": "0.002160 USDT",
-      "month": "0.002160 USDT",
+      "total": "0.003360 USDT",
+      "withdrawable": "0.003360 USDT",
+      "month": "0.003360 USDT",
       "friends": 4
     },
     "commissions": [
@@ -461,8 +461,9 @@
         "fee": "0.004000",
         "commission": "0.001200",
         "timestamp": "2026-05-17T01:50:51.102Z",
-        "status": "pending",
-        "signature": "eiMVbZZ1Ke45bGksrNfDStPU9RbT1JqACE9BR3ttH6gwAP5NN8gE9rw8LjArdupypPUgHbhiN1zZXiMZGSrr2SU"
+        "status": "approved",
+        "signature": "eiMVbZZ1Ke45bGksrNfDStPU9RbT1JqACE9BR3ttH6gwAP5NN8gE9rw8LjArdupypPUgHbhiN1zZXiMZGSrr2SU",
+        "approvedAt": "2026-05-17T14:25:27.664Z"
       },
       {
         "id": "comm-1778873629530-x16pqg",
@@ -783,9 +784,9 @@
   },
   "AQDd735nBNxWxoeNAG7bUn2SA56fennrCYRR1Ykc4fyq\\": {
     "stats": {
-      "total": "0.001920 USDT",
-      "withdrawable": "0.001920 USDT",
-      "month": "0.001920 USDT",
+      "total": "0.002400 USDT",
+      "withdrawable": "0.002400 USDT",
+      "month": "0.002400 USDT",
       "friends": 3
     },
     "commissions": [
@@ -796,8 +797,9 @@
         "fee": "0.001600",
         "commission": "0.000480",
         "timestamp": "2026-05-17T01:38:50.564Z",
-        "status": "pending",
-        "signature": "2Ko5VUuxegZ77j58wMC6jMfJUJoCgXNhBM8yw6MQKwqzJPikMh4wTgoGVbsqMN6MdW8BMsYyBDiKAsqoF1mrQxKG"
+        "status": "approved",
+        "signature": "2Ko5VUuxegZ77j58wMC6jMfJUJoCgXNhBM8yw6MQKwqzJPikMh4wTgoGVbsqMN6MdW8BMsYyBDiKAsqoF1mrQxKG",
+        "approvedAt": "2026-05-17T14:24:34.750Z"
       },
       {
         "id": "comm-1778971066011-4lkmo4",

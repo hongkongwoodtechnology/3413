@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { WalletButton } from "@/components/WalletButton";
@@ -471,7 +471,9 @@ export default function FaqPage() {
             <div className="font-bold text-lg text-white">{t("page.faq.title")}</div>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            <LanguageSwitcher />
+            <Suspense fallback={null}>
+              <LanguageSwitcher />
+            </Suspense>
             <WalletButton />
           </div>
         </div>

@@ -64,7 +64,7 @@ export default function AdminFinancePage() {
     fetchFinance();
   }, [fetchFinance]);
 
-  const runPayoutAction = useCallback(async (action: 'mark_paid' | 'archive_old_bets') => {
+  const runPayoutAction = useCallback(async (action: 'mark_paid' | 'archive_old_bets' | 'mark_legacy_wins') => {
     setIsSubmitting(true);
     setError(null);
     setMessage(null);
@@ -84,6 +84,7 @@ export default function AdminFinancePage() {
       const messages: Record<typeof action, string> = {
         mark_paid: `已標記 ${data.marked ?? 0} 筆為已付款`,
         archive_old_bets: data.message || `已封存 ${data.archived ?? 0} 筆舊注單`,
+        mark_legacy_wins: data.message || `已標記 ${data.marked ?? 0} 筆舊架構贏家`,
       };
 
       setMessage(messages[action]);
@@ -131,6 +132,7 @@ export default function AdminFinancePage() {
       />
       <DangerActionsPanel
         onArchive={() => runPayoutAction('archive_old_bets')}
+        onMarkLegacyWins={() => runPayoutAction('mark_legacy_wins')}
         isSubmitting={isSubmitting}
       />
     </div>

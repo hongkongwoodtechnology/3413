@@ -1,7 +1,7 @@
 "use client";
 
 import { LocalizedLink as Link } from "@/components/LocalizedLink"
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { WalletButton } from "@/components/WalletButton";
@@ -126,7 +126,9 @@ export default function WhitepaperPage() {
             <div className="font-bold text-lg text-white">{t("page.whitepaper.title")}</div>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            <LanguageSwitcher />
+            <Suspense fallback={null}>
+              <LanguageSwitcher />
+            </Suspense>
             <WalletButton />
           </div>
         </div>
@@ -177,4 +179,3 @@ export default function WhitepaperPage() {
     </div>
   );
 }
-
