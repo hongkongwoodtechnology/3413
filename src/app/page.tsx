@@ -30,7 +30,7 @@ import { getUSDTBalance, getTrialUSDTBalance, findAta as findAtaClient } from "@
 import { HOUSE_WALLET, USDT_MINT, USDT_DECIMALS, PLATFORM_FEE_RATE, DEFAULT_COMMISSION_RATE, splitBetAmount, POOL_ADDRESS, formatMissingAtaInitializationMessage, getBoundReferrerStorageKey, resolvePreferredWalletAddress, getCombinedPlatformFeeAmount } from "@/lib/wallets"
 import { getReturnRateForBetMode } from "@/lib/bet-mode"
 import { countActiveOutcomes } from "@/lib/market-rules"
-import { getProjectedPoolIncrement, isInitialPoolState } from "@/lib/bet-preview"
+import { getProjectedPoolIncrement } from "@/lib/bet-preview"
 import { TEAM_NAMES, LEAGUES } from "@/lib/dictionaries"
 import { useHomeMatchesData, type MatchWithMarketData } from "@/hooks/useHomeMatchesData"
 import { useReferralLandingGate } from "@/hooks/useReferralLandingGate"
@@ -709,7 +709,7 @@ export default function Home() {
           away: currentMatch.pools.away
         }
         const totalReal = poolDict.home + poolDict.draw + poolDict.away;
-        if (totalReal === 0 || isInitialPoolState(poolDict)) {
+        if (totalReal === 0) {
           return {
             odds: currentOdds[selectedOutcome as keyof typeof currentOdds],
             riskLevel: 'refund_single_side',
@@ -732,7 +732,7 @@ export default function Home() {
         draw: 0,
         away: 0,
       };
-      if (md.realTotalPool === 0 || isInitialPoolState(md.pools)) {
+      if (md.realTotalPool === 0) {
         return {
           odds: md.initialOdds[selectedOutcome as keyof typeof md.initialOdds],
           riskLevel: 'refund_single_side',
@@ -1205,6 +1205,15 @@ export default function Home() {
   }, [dateFilter]);
 
   const betActionNode = useMemo(() => {
+    const maxPreviewOdds = 15;
+    const hasPreviewOdds =
+      !!projectedOdds &&
+      !!amount &&
+      Number.isFinite(projectedOdds.odds);
+    const confirmLabel = hasPreviewOdds
+      ? `${t('btn.confirm')} · ×${Math.min(projectedOdds.odds, maxPreviewOdds).toFixed(4)}`
+      : t('btn.confirm');
+
     if (projectedOdds?.riskLevel === 'position_limit') {
       return (
         <div className="space-y-3 p-4 bg-error/10 border border-error/30 rounded-xl">
@@ -1247,7 +1256,7 @@ export default function Home() {
         onClick={handlePrediction}
       >
         {!connected ? t('wallet.connect') : 
-         txStatus === "idle" ? t('btn.confirm') :
+         txStatus === "idle" ? confirmLabel :
          txStatus === "submitting" ? t('btn.submitting') :
          txStatus === "confirming" ? t('btn.confirming') :
          t('btn.success')}
@@ -1550,7 +1559,7 @@ export default function Home() {
                                     commissionRate: effectiveCommissionRate,
                                     currentRealPool: md.realTotalPool,
                                 });
-                                if (md.realTotalPool === 0 || isInitialPoolState(md.pools)) {
+                                if (md.realTotalPool === 0) {
                                     matchOdds = { home: md.initialOdds.home, draw: md.initialOdds.draw, away: md.initialOdds.away };
                                 } else if (projectedIncrement > 0) {
                                     const projectedPools = {
@@ -1605,7 +1614,7 @@ export default function Home() {
                                     commissionRate: effectiveCommissionRate,
                                     currentRealPool: totalReal,
                                 });
-                                if (totalReal === 0 || isInitialPoolState(pools)) {
+                                if (totalReal === 0) {
                                     matchOdds = { home: 1.01, draw: 1.01, away: 1.01 };
                                 } else if (projectedIncrement > 0) {
                                     const projectedPools = { ...pools };

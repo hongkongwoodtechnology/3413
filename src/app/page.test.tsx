@@ -50,6 +50,18 @@ const ZERO_POOL_MATCH_FIXTURE = [
   },
 ];
 
+const ONE_SIDED_POOL_MATCH_FIXTURE = [
+  {
+    ...MATCH_FIXTURE[0],
+    pools: { home: 25, draw: 0, away: 0 },
+    marketData: {
+      ...MATCH_FIXTURE[0].marketData,
+      realTotalPool: 25,
+      pools: { home: 25, draw: 0, away: 0 },
+    },
+  },
+];
+
 function makeJsonResponse(payload: unknown, ok = true): Response {
   return {
     ok,
@@ -87,7 +99,11 @@ async function openTrialPredictionModal() {
     target: { value: "4" },
   });
 
-  return screen.getByRole("button", { name: "btn.confirm" });
+  await waitFor(() => {
+    expect(screen.getByRole("button", { name: /btn\.confirm/ }).textContent).not.toContain("NaN");
+  });
+
+  return screen.getByRole("button", { name: /btn\.confirm/ });
 }
 
 jest.mock("next/dynamic", () => ({
@@ -389,12 +405,12 @@ describe("Home referral landing", () => {
       expect(screen.getByText("Alpha FC")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getAllByRole("button", { name: /1\.5/ })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /2\.5/ })[0]);
     fireEvent.change(screen.getByPlaceholderText("0.00"), {
       target: { value: "4" },
     });
 
-    expect(screen.getByRole("button", { name: "btn.confirm" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /btn\.confirm/ })).toBeEnabled();
   });
 
   it("updates all outcome buttons immediately using net pool contribution for real money", async () => {
@@ -441,14 +457,15 @@ describe("Home referral landing", () => {
       expect(screen.getByText("Alpha FC")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getAllByRole("button", { name: /1\.5/ })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /2\.5/ })[0]);
     fireEvent.change(screen.getByPlaceholderText("0.00"), {
       target: { value: "4" },
     });
 
-    expect(screen.getByRole("button", { name: /1\.5/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /2\.5/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /3\.5/ })).toBeInTheDocument();
+    const buttonTexts = screen.getAllByRole("button").map((button) => button.textContent);
+    expect(buttonTexts).toContain("outcome.home1.5");
+    expect(buttonTexts).toContain("outcome.draw2.5");
+    expect(buttonTexts).toContain("outcome.away3.5");
   });
 
   it("updates all outcome buttons immediately for trial funds on a non-zero pool", async () => {
@@ -477,6 +494,33 @@ describe("Home referral landing", () => {
       expect(buttonTexts).toContain("outcome.home2.9");
       expect(buttonTexts).toContain("outcome.draw2");
       expect(buttonTexts).toContain("outcome.away1.5");
+    });
+  });
+
+  it("updates odds while typing when the pool already has a first bet but is still single-sided", async () => {
+    mockedConnected = true;
+    mockedPublicKey = { toBase58: () => "wallet-111" };
+    mockedSplitBetAmount.mockReturnValue({ pool: 3.68, house: 0.16, commission: 0.16, support: 0 });
+    (fetchLiveMatches as jest.Mock).mockResolvedValue(ONE_SIDED_POOL_MATCH_FIXTURE);
+    (getUSDTBalance as jest.Mock).mockResolvedValue(100);
+    window.history.replaceState({}, "", "/");
+
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Alpha FC")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: /2\.5/ })[0]);
+    fireEvent.change(screen.getByPlaceholderText("0.00"), {
+      target: { value: "4" },
+    });
+
+    await waitFor(() => {
+      const buttonTexts = screen.getAllByRole("button").map((button) => button.textContent);
+      expect(buttonTexts).toContain("outcome.home2.87");
+      expect(buttonTexts).toContain("outcome.draw0");
+      expect(buttonTexts).toContain("outcome.away0");
     });
   });
 
