@@ -91,3 +91,13 @@
   ZIP saved: C:\Users\USER\OneDrive\Documents\GAMBLE_backups\GAMBLE_2026-05-17_0925.zip (1330.6 KB)
   Removed old: GAMBLE_2026-05-16_0009.zip
 === SUCCESS ===
+=== Backup 2026-05-17_1200 ===
+[1/3] Git add + commit ...
+  Committed: [main d699508] chore: daily backup 2026-05-17_1200  13 files changed, 1805 insertions(+), 40 deletions(-)  create mode 100644 data/backups/bets_db_2026-05-17.json  create mode 100644 data/backups/referral_db_2026-05-17.json
+[2/3] Git push ...
+  Push ERROR: fatal: unable to access 'https://github.com/hongkongwoodtechnology/3413.git/': Could not resolve host: github.com
+[3/3] OneDrive ZIP backup ...
+  Started OneDrive sync.
+  ZIP saved: C:\Users\USER\OneDrive\Documents\GAMBLE_backups\GAMBLE_2026-05-17_1200.zip (1342.6 KB)
+  Removed old: GAMBLE_2026-05-16_0020.zip
+=== SUCCESS ===
