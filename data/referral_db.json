@@ -15,9 +15,9 @@
   },
   "FhehP5xXeHrMSFZkti2vAXDm4ZJeqXNu3vARGCTV8pkf": {
     "stats": {
-      "total": "0.378480 USDT",
+      "total": "0.000000 USDT",
       "withdrawable": "0.000000 USDT",
-      "month": "0.378480 USDT",
+      "month": "0.000000 USDT",
       "friends": 1
     },
     "commissions": [
@@ -773,12 +773,45 @@
   },
   "AQDd735nBNxWxoeNAG7bUn2SA56fennrCYRR1Ykc4fyq\\": {
     "stats": {
-      "total": "0.000000 USDT",
-      "withdrawable": "0.000000 USDT",
-      "month": "0.000000 USDT",
+      "total": "0.000720 USDT",
+      "withdrawable": "0.000720 USDT",
+      "month": "0.000720 USDT",
       "friends": 3
     },
-    "commissions": [],
+    "commissions": [
+      {
+        "id": "comm-1778971066011-4lkmo4",
+        "referee": "AQDd735nBNxWxoeNAG7bUn2SA56fennrCYRR1Ykc4fyq",
+        "betAmount": "0.050000",
+        "fee": "0.004000",
+        "commission": "0.001200",
+        "timestamp": "2026-05-16T22:37:46.011Z",
+        "status": "pending",
+        "signature": "3kHhZfR5BnrbMtWKgJSWvjcCwdfzPQCn2kZZVWfmQah9iSTjJ9FbuWpiuLTG8FrFiFNQH5tM1UZS3LA5C3ASXtqT"
+      },
+      {
+        "id": "comm-1778967944448-jpgp8j",
+        "referee": "AQDd735nBNxWxoeNAG7bUn2SA56fennrCYRR1Ykc4fyq",
+        "betAmount": "0.030000",
+        "fee": "0.000000",
+        "commission": "0.000000",
+        "timestamp": "2026-05-16T21:45:44.448Z",
+        "status": "settled",
+        "signature": "Q8LqAQP9wp8nLXb3EJJciX4ydtwibBQhL1gP7ZJkz2QmEZoprVwNCAepTDwZC79omYiYKrTSRbZi4sYYcSHozTJ",
+        "settledAt": "2026-05-16T22:07:19.728Z"
+      },
+      {
+        "id": "comm-1778966812216-xxtbe3",
+        "referee": "AQDd735nBNxWxoeNAG7bUn2SA56fennrCYRR1Ykc4fyq",
+        "betAmount": "0.030000",
+        "fee": "0.002400",
+        "commission": "0.000720",
+        "timestamp": "2026-05-16T21:26:52.216Z",
+        "status": "approved",
+        "signature": "5jioj2Xy35QYGSFD4TrBThV6XbDUUVxk6Ghb7QXqvLhNDuBX42kYNqxtatZ7Vobr6iBqyajkBQs83DfiSNHi8USe",
+        "approvedAt": "2026-05-16T21:27:41.043Z"
+      }
+    ],
     "referees": [
       {
         "id": "ref-new-1778874191656",

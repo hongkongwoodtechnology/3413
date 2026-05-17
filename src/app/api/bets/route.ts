@@ -31,6 +31,22 @@ type BetRecord = {
   paidOut?: boolean;
 };
 
+function isMarketClosedForBetting(market?: MarketDataInfo): boolean {
+    if (!market) {
+        return false;
+    }
+
+    if (typeof market.finalWinner === 'string' && market.finalWinner.length > 0) {
+        return true;
+    }
+
+    if (market.settled || market.refundProcessed) {
+        return true;
+    }
+
+    return false;
+}
+
 function getTrialFundsUsageForMatch(
     db: Record<string, BetRecord[]>,
     matchId: number | string
@@ -179,6 +195,11 @@ export async function POST(request: Request) {
 
         const marketDb = loadMarketDb();
         const key = String(matchId);
+
+        if (isMarketClosedForBetting(marketDb[key])) {
+            return NextResponse.json({ error: '賽事已結束，無法投注。' }, { status: 403 });
+        }
+
         const currentMarket: MarketDataInfo = marketDb[key] || {
             realTotalPool: 0,
             liabilities: { home: 0, draw: 0, away: 0 },
@@ -192,7 +213,7 @@ export async function POST(request: Request) {
         const currentTotalReal = currentPools.home + currentPools.draw + currentPools.away;
         const isFeeFundedCold = currentTotalReal < 0.50;
 
-        if (useBonus && currentTotalReal <= 0) {
+        if (useBonus && currentRealTotal <= 0) {
             return NextResponse.json(
                 {
                     error: '體驗金不可作為該場賭池首注，請等待真實資金先建立賭池。',
@@ -204,7 +225,7 @@ export async function POST(request: Request) {
 
         if (useBonus) {
             const trialFundsUsed = getTrialFundsUsageForMatch(db, matchId);
-            const trialFundsCap = Number((currentTotalReal * TRIAL_FUNDS_CAP_RATIO).toFixed(6));
+            const trialFundsCap = Number((currentRealTotal * TRIAL_FUNDS_CAP_RATIO).toFixed(6));
             const trialFundsRemaining = Math.max(
                 0,
                 Number((trialFundsCap - trialFundsUsed).toFixed(6))

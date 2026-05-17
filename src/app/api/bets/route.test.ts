@@ -71,6 +71,25 @@ function mockDatabases({
   });
 }
 
+function createBetRequest(overrides: Record<string, unknown> = {}) {
+  return new Request('http://localhost/api/bets', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userAddress: 'test-user',
+      matchId: 101,
+      matchName: 'A vs B',
+      outcome: 'home',
+      amount: 10,
+      odds: 2.15,
+      useBonus: false,
+      timestamp: 1234567890,
+      liveMinute: 12,
+      ...overrides,
+    }),
+  });
+}
+
 describe('bets POST', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -159,7 +178,7 @@ describe('bets POST', () => {
     expect(json.data.netPayout).toBe(9.4);
   });
 
-  it('accepts a trial-funds bet when cumulative match usage stays within the 15% cap', async () => {
+  it('accepts a trial-funds bet when real-money pool growth expands the cumulative 15% cap', async () => {
     mockDatabases({
       betsDb: {
         'existing-trial-user': [
@@ -178,6 +197,15 @@ describe('bets POST', () => {
           },
         ],
       },
+      marketDb: {
+        '101': {
+          realTotalPool: 300,
+          liabilities: { home: 0, draw: 0, away: 0 },
+          pools: { home: 100, draw: 80, away: 70 },
+          initialOdds: { home: 1.88, draw: 3.4, away: 4.7 },
+          attractionWindowUsed: { home: 0, draw: 0, away: 0 },
+        },
+      },
     });
 
     const req = new Request('http://localhost/api/bets', {
@@ -188,7 +216,7 @@ describe('bets POST', () => {
         matchId: 101,
         matchName: 'A vs B',
         outcome: 'home',
-        amount: 7,
+        amount: 10,
         odds: 2.15,
         useBonus: true,
         timestamp: 1234567895,
@@ -204,7 +232,7 @@ describe('bets POST', () => {
     expect(json.data.useBonus).toBe(true);
   });
 
-  it('rejects a trial-funds bet when cumulative match usage exceeds the 15% cap', async () => {
+  it('rejects a trial-funds bet when cumulative match usage exceeds 15% of realTotalPool', async () => {
     mockDatabases({
       betsDb: {
         'existing-trial-user': [
@@ -214,14 +242,23 @@ describe('bets POST', () => {
             matchId: 101,
             matchName: 'A vs B',
             outcome: 'draw',
-            amount: 30,
+            amount: 10,
             odds: 3.4,
-            netPayout: 102,
+            netPayout: 34,
             status: 'pending',
             useBonus: true,
             timestamp: 1234567000,
           },
         ],
+      },
+      marketDb: {
+        '101': {
+          realTotalPool: 100,
+          liabilities: { home: 0, draw: 0, away: 0 },
+          pools: { home: 100, draw: 80, away: 70 },
+          initialOdds: { home: 1.88, draw: 3.4, away: 4.7 },
+          attractionWindowUsed: { home: 0, draw: 0, away: 0 },
+        },
       },
     });
 
@@ -233,7 +270,7 @@ describe('bets POST', () => {
         matchId: 101,
         matchName: 'A vs B',
         outcome: 'home',
-        amount: 8,
+        amount: 6,
         odds: 2.15,
         useBonus: true,
         timestamp: 1234567896,
@@ -246,9 +283,9 @@ describe('bets POST', () => {
 
     expect(res.status).toBe(403);
     expect(json.code).toBe('risk_trial_funds_cap');
-    expect(json.trialFundsCap).toBe(37.5);
-    expect(json.trialFundsUsed).toBe(30);
-    expect(json.trialFundsRemaining).toBe(7.5);
+    expect(json.trialFundsCap).toBe(15);
+    expect(json.trialFundsUsed).toBe(10);
+    expect(json.trialFundsRemaining).toBe(5);
     expect(json.error).toContain('體驗金超出單場上限');
   });
 
@@ -295,6 +332,157 @@ describe('bets POST', () => {
     expect(res.status).toBe(200);
     expect(json.success).toBe(true);
     expect(json.data.useBonus).toBe(false);
+  });
+
+  it('rejects bets when the market already has a final winner', async () => {
+    mockDatabases({
+      marketDb: {
+        '101': {
+          realTotalPool: 250,
+          liabilities: { home: 0, draw: 0, away: 0 },
+          pools: { home: 100, draw: 80, away: 70 },
+          finalWinner: 'away',
+        },
+      },
+    });
+
+    const res = await POST(createBetRequest());
+    const json = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(json.error).toBe('賽事已結束，無法投注。');
+    expect(fs.writeFileSync).not.toHaveBeenCalled();
+  });
+
+  it('rejects bets when the market is already settled', async () => {
+    mockDatabases({
+      marketDb: {
+        '101': {
+          realTotalPool: 250,
+          liabilities: { home: 0, draw: 0, away: 0 },
+          pools: { home: 100, draw: 80, away: 70 },
+          settled: true,
+        },
+      },
+    });
+
+    const res = await POST(createBetRequest());
+    const json = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(json.error).toBe('賽事已結束，無法投注。');
+    expect(fs.writeFileSync).not.toHaveBeenCalled();
+  });
+
+  it('rejects bets when the market refund has already been processed', async () => {
+    mockDatabases({
+      marketDb: {
+        '101': {
+          realTotalPool: 250,
+          liabilities: { home: 10, draw: 0, away: 0 },
+          pools: { home: 100, draw: 0, away: 0 },
+          refundProcessed: true,
+        },
+      },
+    });
+
+    const res = await POST(createBetRequest());
+    const json = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(json.error).toBe('賽事已結束，無法投注。');
+    expect(fs.writeFileSync).not.toHaveBeenCalled();
+  });
+
+  it('rejects a trial-funds bet when realTotalPool is empty even if legacy pools still show amounts', async () => {
+    mockDatabases({
+      marketDb: {
+        '303': {
+          realTotalPool: 0,
+          liabilities: { home: 0, draw: 0, away: 0 },
+          pools: { home: 5, draw: 0, away: 0 },
+          initialOdds: { home: 2.1, draw: 3.2, away: 3.6 },
+          attractionWindowUsed: { home: 0, draw: 0, away: 0 },
+        },
+      },
+    });
+
+    const req = new Request('http://localhost/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: 'trial-user-legacy-pool-only',
+        matchId: 303,
+        matchName: 'Legacy Pool Only Match',
+        outcome: 'home',
+        amount: 1,
+        odds: 2.1,
+        useBonus: true,
+        timestamp: 12345678975,
+        liveMinute: 12,
+      }),
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(json.code).toBe('risk_trial_funds_first_bet_blocked');
+    expect(json.error).toContain('體驗金不可作為該場賭池首注');
+  });
+
+  it('treats trial-funds first-bet blocking as pool-wide rather than user-specific', async () => {
+    mockDatabases({
+      betsDb: {
+        'trial-user-has-history': [
+          {
+            id: 'old-bet-other-match',
+            userAddress: 'trial-user-has-history',
+            matchId: 999,
+            matchName: 'Other Match',
+            outcome: 'away',
+            amount: 3,
+            odds: 2.2,
+            netPayout: 6.6,
+            status: 'pending',
+            useBonus: true,
+            timestamp: 1234567000,
+          },
+        ],
+      },
+      marketDb: {
+        '303': {
+          realTotalPool: 0,
+          liabilities: { home: 0, draw: 0, away: 0 },
+          pools: { home: 0, draw: 0, away: 0 },
+          initialOdds: { home: 2.1, draw: 3.2, away: 3.6 },
+          attractionWindowUsed: { home: 0, draw: 0, away: 0 },
+        },
+      },
+    });
+
+    const req = new Request('http://localhost/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: 'trial-user-has-history',
+        matchId: 303,
+        matchName: 'Zero Pool Match',
+        outcome: 'home',
+        amount: 1,
+        odds: 2.1,
+        useBonus: true,
+        timestamp: 1234567901,
+        liveMinute: 12,
+      }),
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(json.code).toBe('risk_trial_funds_first_bet_blocked');
+    expect(json.error).toContain('體驗金不可作為該場賭池首注');
   });
 
   it('rejects a trial-funds bet when it would become the first bet in an empty match pool', async () => {

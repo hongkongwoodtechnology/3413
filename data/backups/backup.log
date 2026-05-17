@@ -73,3 +73,12 @@
   Started OneDrive sync.
   ZIP saved: C:\Users\USER\OneDrive\Documents\GAMBLE_backups\GAMBLE_2026-05-17_0000.zip (1290.1 KB)
 === SUCCESS ===
+=== Backup 2026-05-17_0400 ===
+[1/3] Git add + commit ...
+  Committed: [main cea336e] chore: daily backup 2026-05-17_0400  4 files changed, 843 insertions(+), 16 deletions(-)  create mode 100644 data/backups/referral_db_2026-05-16.json
+[2/3] Git push ...
+  Pushed to GitHub.
+[3/3] OneDrive ZIP backup ...
+  ZIP saved: C:\Users\USER\OneDrive\Documents\GAMBLE_backups\GAMBLE_2026-05-17_0400.zip (1294.3 KB)
+  Removed old: GAMBLE_2026-05-15_2234.zip
+=== SUCCESS ===

@@ -30,9 +30,12 @@ import { getUSDTBalance, getTrialUSDTBalance, findAta as findAtaClient } from "@
 import { HOUSE_WALLET, USDT_MINT, USDT_DECIMALS, PLATFORM_FEE_RATE, DEFAULT_COMMISSION_RATE, splitBetAmount, POOL_ADDRESS, formatMissingAtaInitializationMessage, getBoundReferrerStorageKey, resolvePreferredWalletAddress, getCombinedPlatformFeeAmount } from "@/lib/wallets"
 import { getReturnRateForBetMode } from "@/lib/bet-mode"
 import { countActiveOutcomes } from "@/lib/market-rules"
+import { getProjectedPoolIncrement, isInitialPoolState } from "@/lib/bet-preview"
 import { TEAM_NAMES, LEAGUES } from "@/lib/dictionaries"
 import { useHomeMatchesData, type MatchWithMarketData } from "@/hooks/useHomeMatchesData"
 import { useReferralLandingGate } from "@/hooks/useReferralLandingGate"
+import { fetchLiveMatches } from "@/lib/api"
+import StaleMatchToast from "@/components/ui/stale-match-toast"
 
 type Match = MatchWithMarketData
 
@@ -317,6 +320,8 @@ export default function Home() {
   const [selectedOutcome, setSelectedOutcome] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [txStatus, setTxStatus] = useState<"idle" | "submitting" | "confirming" | "success" | "error">("idle")
+  const [showStaleMatchToast, setShowStaleMatchToast] = useState(false)
+  const [isRefreshingMatches, setIsRefreshingMatches] = useState(false)
   const [activeCategory, setActiveCategory] = useState<string>('all')
   const [activeLeague, setActiveLeague] = useState<string | null>(null)
   const [isLeagueMenuOpen, setIsLeagueMenuOpen] = useState(false)
@@ -364,6 +369,21 @@ export default function Home() {
     shouldPauseMatchesFetching,
     initialMatches: INITIAL_MATCHES,
   })
+
+  const reloadMatches = useCallback(async () => {
+    setIsRefreshingMatches(true)
+    try {
+      const liveMatches = await fetchLiveMatches(language) as Match[]
+      if (liveMatches.length > 0) {
+        setMatchesIfChanged(liveMatches)
+      }
+      setShowStaleMatchToast(false)
+    } catch (error) {
+      console.error("Failed to refresh matches after stale-match rejection", error)
+    } finally {
+      setIsRefreshingMatches(false)
+    }
+  }, [language, setMatchesIfChanged])
 
   // Admin Check
   const isAdmin = useMemo(() => {
@@ -661,6 +681,22 @@ export default function Home() {
 
   // Calculate potential return & slippage
   const betAmountNum = parseFloat(amount) || 0
+  const currentRealPool = currentMatch?.marketData
+    ? currentMatch.marketData.realTotalPool
+    : currentMatch
+      ? currentMatch.pools.home + currentMatch.pools.draw + currentMatch.pools.away
+      : 0
+  const projectedPoolIncrement = useMemo(() => {
+    if (!currentMatch || betAmountNum <= 0) return 0
+
+    return getProjectedPoolIncrement({
+      amount: betAmountNum,
+      useBonus,
+      commissionRate: effectiveCommissionRate,
+      currentRealPool,
+    })
+  }, [currentMatch, betAmountNum, useBonus, effectiveCommissionRate, currentRealPool])
+  const effectiveBetAmountForQuote = useBonus ? betAmountNum : projectedPoolIncrement
   
   // Slippage / Ideal Odds Calculation
   const projectedOdds = useMemo((): { odds: number; riskLevel: RiskLevel } | null => {
@@ -673,10 +709,16 @@ export default function Home() {
           away: currentMatch.pools.away
         }
         const totalReal = poolDict.home + poolDict.draw + poolDict.away;
+        if (totalReal === 0 || isInitialPoolState(poolDict)) {
+          return {
+            odds: currentOdds[selectedOutcome as keyof typeof currentOdds],
+            riskLevel: 'refund_single_side',
+          };
+        }
         return oddsEngine.calculateDynamicOdds(
           poolDict,
           selectedOutcome,
-          betAmountNum,
+          effectiveBetAmountForQuote,
           undefined, undefined, undefined, undefined, undefined, undefined, undefined,
           effectiveReturnRate,
           totalReal < 0.50 || undefined,
@@ -690,11 +732,17 @@ export default function Home() {
         draw: 0,
         away: 0,
       };
+      if (md.realTotalPool === 0 || isInitialPoolState(md.pools)) {
+        return {
+          odds: md.initialOdds[selectedOutcome as keyof typeof md.initialOdds],
+          riskLevel: 'refund_single_side',
+        };
+      }
       const quote = oddsEngine.calculatePhaseAwareLockedOdds({
           pools: md.pools,
           liabilities: md.liabilities,
           selectedOutcome: selectedOutcome as 'home' | 'draw' | 'away',
-          betAmount: betAmountNum,
+          betAmount: effectiveBetAmountForQuote,
           initialOdds: md.initialOdds,
           attractionWindowUsed,
           score: currentMatch.score,
@@ -703,7 +751,7 @@ export default function Home() {
           returnRate: effectiveReturnRate,
       });
       return quote ? { odds: quote.odds, riskLevel: quote.riskLevel } : null;
-  }, [currentMatch, selectedOutcome, betAmountNum, oddsEngine, effectiveCommissionRate, effectiveReturnRate]);
+  }, [currentMatch, selectedOutcome, betAmountNum, currentOdds, oddsEngine, effectiveCommissionRate, effectiveReturnRate, effectiveBetAmountForQuote]);
 
   const selectedOdds = projectedOdds ? projectedOdds.odds : (selectedOutcome ? currentOdds[selectedOutcome as keyof typeof currentOdds] : 0)
   
@@ -1076,6 +1124,12 @@ export default function Home() {
       clearTimeoutIfExists();
       cancelControllerRef.current = null;
       console.error("Transaction failed detailed error:", error);
+
+      if (typeof error?.message === 'string' && error.message.includes("賽事已結束，無法投注。")) {
+          setShowStaleMatchToast(true);
+          setTxStatus("idle");
+          return;
+      }
       
       let errorMessage = "Transaction failed or rejected by user.";
       if (error.message) {
@@ -1490,24 +1544,41 @@ export default function Home() {
                                 away: 0,
                             };
                             if (isFocused && selectedOutcome) {
-                                if (md.realTotalPool === 0) {
+                                const projectedIncrement = getProjectedPoolIncrement({
+                                    amount: betAmountNum,
+                                    useBonus,
+                                    commissionRate: effectiveCommissionRate,
+                                    currentRealPool: md.realTotalPool,
+                                });
+                                if (md.realTotalPool === 0 || isInitialPoolState(md.pools)) {
                                     matchOdds = { home: md.initialOdds.home, draw: md.initialOdds.draw, away: md.initialOdds.away };
-                                } else {
+                                } else if (projectedIncrement > 0) {
                                     const projectedPools = {
                                         home: md.pools.home || 0,
                                         draw: md.pools.draw || 0,
                                         away: md.pools.away || 0,
                                     };
-                                    projectedPools[selectedOutcome as keyof typeof projectedPools] += betAmountNum;
-                                    const result = oddsEngine.calculateAllDisplayOdds(
-                                        projectedPools,
-                                        undefined,
-                                        undefined,
-                                        match.score,
-                                        match.liveMinute,
-                                        match.status,
-                                        effectiveReturnRate
-                                    );
+                                    projectedPools[selectedOutcome as keyof typeof projectedPools] += projectedIncrement;
+                                    const result = oddsEngine.calculatePhaseAwareDisplayOdds({
+                                        pools: projectedPools,
+                                        initialOdds: md.initialOdds,
+                                        attractionWindowUsed,
+                                        score: match.score,
+                                        liveMinute: match.liveMinute,
+                                        status: match.status,
+                                        returnRate: effectiveReturnRate,
+                                    });
+                                    matchOdds = { home: result.home, draw: result.draw, away: result.away };
+                                } else {
+                                    const result = oddsEngine.calculatePhaseAwareDisplayOdds({
+                                        pools: md.pools,
+                                        initialOdds: md.initialOdds,
+                                        attractionWindowUsed,
+                                        score: match.score,
+                                        liveMinute: match.liveMinute,
+                                        status: match.status,
+                                        returnRate: effectiveReturnRate,
+                                    });
                                     matchOdds = { home: result.home, draw: result.draw, away: result.away };
                                 }
                             } else if (md.realTotalPool === 0) {
@@ -1528,11 +1599,17 @@ export default function Home() {
                             const pools = { home: match.pools.home, draw: match.pools.draw, away: match.pools.away };
                             if (isFocused && selectedOutcome) {
                                 const totalReal = pools.home + pools.draw + pools.away;
-                                if (totalReal === 0) {
+                                const projectedIncrement = getProjectedPoolIncrement({
+                                    amount: betAmountNum,
+                                    useBonus,
+                                    commissionRate: effectiveCommissionRate,
+                                    currentRealPool: totalReal,
+                                });
+                                if (totalReal === 0 || isInitialPoolState(pools)) {
                                     matchOdds = { home: 1.01, draw: 1.01, away: 1.01 };
-                                } else {
+                                } else if (projectedIncrement > 0) {
                                     const projectedPools = { ...pools };
-                                    projectedPools[selectedOutcome as keyof typeof projectedPools] += betAmountNum;
+                                    projectedPools[selectedOutcome as keyof typeof projectedPools] += projectedIncrement;
                                     const result = oddsEngine.calculateAllDisplayOdds(
                                         projectedPools,
                                         undefined,
@@ -2077,6 +2154,14 @@ export default function Home() {
             </div>
          </div>
       )}
+      <StaleMatchToast
+        open={showStaleMatchToast}
+        isRefreshing={isRefreshingMatches}
+        onRefresh={() => {
+          void reloadMatches()
+        }}
+        onClose={() => setShowStaleMatchToast(false)}
+      />
       </>
       )}
     </div>

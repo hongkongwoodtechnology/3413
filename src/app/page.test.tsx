@@ -14,6 +14,7 @@ let mockedConnected = false;
 let mockedPublicKey: { toBase58: () => string } | null = null;
 let mockedSendTransaction = jest.fn();
 let mockedSkipChainProgress = false;
+const mockedSplitBetAmount = jest.fn(() => ({ pool: 4, house: 0, commission: 0, support: 0 }));
 
 const MATCH_FIXTURE = [
   {
@@ -55,6 +56,24 @@ function makeJsonResponse(payload: unknown, ok = true): Response {
     status: ok ? 200 : 403,
     json: async () => payload,
   } as Response;
+}
+
+function mockClosedMatchBetFailure() {
+  global.fetch = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+
+    if (url.startsWith("/api/balance?address=")) {
+      return makeJsonResponse({ success: true, balance: 100 });
+    }
+    if (url.startsWith("/api/bets?address=")) {
+      return makeJsonResponse({ success: true, data: [] });
+    }
+    if (url === "/api/bets" && init?.method === "POST") {
+      return makeJsonResponse({ success: false, error: "賽事已結束，無法投注。" }, false);
+    }
+
+    return makeJsonResponse({ success: true, data: [] });
+  }) as jest.Mock;
 }
 
 async function openTrialPredictionModal() {
@@ -148,20 +167,32 @@ jest.mock("@/lib/odds-engine", () => ({
       return 1.5;
     }
 
-    calculatePhaseAwareDisplayOdds() {
-      return { home: 1.5, draw: 2.5, away: 3.5 };
+    calculatePhaseAwareDisplayOdds({
+      pools,
+    }: {
+      pools: { home: number; draw: number; away: number };
+    }) {
+      return {
+        home: Number((pools.home / 10).toFixed(2)),
+        draw: Number((pools.draw / 10).toFixed(2)),
+        away: Number((pools.away / 10).toFixed(2)),
+      };
     }
 
-    calculatePhaseAwareLockedOdds() {
-      return { odds: 1.5, riskLevel: "balanced" };
+    calculatePhaseAwareLockedOdds({ betAmount }: { betAmount: number }) {
+      return { odds: 1.5 + betAmount / 100, riskLevel: "normal" };
     }
 
-    calculateAllDisplayOdds() {
-      return { home: 1.5, draw: 2.5, away: 3.5 };
+    calculateAllDisplayOdds(pools: { home: number; draw: number; away: number }) {
+      return {
+        home: Number((pools.home / 10).toFixed(2)),
+        draw: Number((pools.draw / 10).toFixed(2)),
+        away: Number((pools.away / 10).toFixed(2)),
+      };
     }
 
-    calculateDynamicOdds() {
-      return { odds: 1.5, riskLevel: "balanced" };
+    calculateDynamicOdds(_: unknown, __: unknown, betAmount: number) {
+      return { odds: 1.5 + betAmount / 100, riskLevel: "normal" };
     }
 
     getMaxBetAmount() {
@@ -170,6 +201,10 @@ jest.mock("@/lib/odds-engine", () => ({
 
     getMaxPositionRatio() {
       return 0.3;
+    }
+
+    getFeeFundedThreshold() {
+      return 0.5;
     }
   },
 }));
@@ -210,7 +245,7 @@ jest.mock("@/lib/wallets", () => ({
   PLATFORM_FEE_RATE: 0.005,
   DEFAULT_COMMISSION_RATE: 0.3,
   POOL_ADDRESS: "pool-address",
-  splitBetAmount: () => ({ pool: 4, house: 0, commission: 0, support: 0 }),
+  splitBetAmount: (...args: unknown[]) => mockedSplitBetAmount(...args),
   getCombinedPlatformFeeAmount: ({ house, commission }: { house: number; commission: number }) =>
     house + commission,
   formatMissingAtaInitializationMessage: () => "missing ata",
@@ -362,6 +397,89 @@ describe("Home referral landing", () => {
     expect(screen.getByRole("button", { name: "btn.confirm" })).toBeEnabled();
   });
 
+  it("updates all outcome buttons immediately using net pool contribution for real money", async () => {
+    mockedConnected = true;
+    mockedPublicKey = { toBase58: () => "wallet-111" };
+    mockedSplitBetAmount.mockReturnValue({ pool: 3.68, house: 0.16, commission: 0.16, support: 0 });
+    (fetchLiveMatches as jest.Mock).mockResolvedValue(MATCH_FIXTURE);
+    (getUSDTBalance as jest.Mock).mockResolvedValue(100);
+    (getTrialUSDTBalance as jest.Mock).mockResolvedValue(15);
+    window.history.replaceState({}, "", "/");
+
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Alpha FC")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: /2\.5/ })[0]);
+    fireEvent.change(screen.getByPlaceholderText("0.00"), {
+      target: { value: "4" },
+    });
+
+    await waitFor(() => {
+      const buttonTexts = screen.getAllByRole("button").map((button) => button.textContent);
+      expect(buttonTexts).toContain("outcome.home2.87");
+      expect(buttonTexts).toContain("outcome.draw2");
+      expect(buttonTexts).toContain("outcome.away1.5");
+    });
+
+    expect(mockedSplitBetAmount).toHaveBeenCalledWith(4, expect.any(Number), 60);
+  });
+
+  it("keeps initial odds stable while typing on a first-bet pool", async () => {
+    mockedConnected = true;
+    mockedPublicKey = { toBase58: () => "wallet-111" };
+    mockedSplitBetAmount.mockReturnValue({ pool: 3.68, house: 0.16, commission: 0.16, support: 0 });
+    (fetchLiveMatches as jest.Mock).mockResolvedValue(ZERO_POOL_MATCH_FIXTURE);
+    (getUSDTBalance as jest.Mock).mockResolvedValue(100);
+    window.history.replaceState({}, "", "/");
+
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Alpha FC")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: /1\.5/ })[0]);
+    fireEvent.change(screen.getByPlaceholderText("0.00"), {
+      target: { value: "4" },
+    });
+
+    expect(screen.getByRole("button", { name: /1\.5/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /2\.5/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /3\.5/ })).toBeInTheDocument();
+  });
+
+  it("updates all outcome buttons immediately for trial funds on a non-zero pool", async () => {
+    mockedConnected = true;
+    mockedPublicKey = { toBase58: () => "wallet-111" };
+    mockedSplitBetAmount.mockReturnValue({ pool: 3.68, house: 0.16, commission: 0.16, support: 0 });
+    (fetchLiveMatches as jest.Mock).mockResolvedValue(MATCH_FIXTURE);
+    (getUSDTBalance as jest.Mock).mockResolvedValue(100);
+    (getTrialUSDTBalance as jest.Mock).mockResolvedValue(15);
+    window.history.replaceState({}, "", "/");
+
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText("15.00 tUSDT")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: /2\.5/ })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "label.trial_funds" }));
+    fireEvent.change(screen.getByPlaceholderText("0.00"), {
+      target: { value: "4" },
+    });
+
+    await waitFor(() => {
+      const buttonTexts = screen.getAllByRole("button").map((button) => button.textContent);
+      expect(buttonTexts).toContain("outcome.home2.9");
+      expect(buttonTexts).toContain("outcome.draw2");
+      expect(buttonTexts).toContain("outcome.away1.5");
+    });
+  });
+
   it("does not leave a fake successful bet in the UI when /api/bets persistence fails", async () => {
     mockedConnected = true;
     mockedPublicKey = { toBase58: () => "wallet-111" };
@@ -400,5 +518,68 @@ describe("Home referral landing", () => {
 
     expect(screen.queryByText("btn.success")).not.toBeInTheDocument();
     expect(screen.getByText("No bets found for this period")).toBeInTheDocument();
+  });
+
+  it("shows a stale-match toast when /api/bets rejects a closed match", async () => {
+    mockedConnected = true;
+    mockedPublicKey = { toBase58: () => "wallet-111" };
+    mockedSkipChainProgress = true;
+    (fetchLiveMatches as jest.Mock).mockResolvedValue(MATCH_FIXTURE);
+    (getUSDTBalance as jest.Mock).mockResolvedValue(100);
+    (getTrialUSDTBalance as jest.Mock).mockResolvedValue(15);
+    window.history.replaceState({}, "", "/");
+    const alertSpy = jest.spyOn(window, "alert").mockImplementation(() => {});
+    mockClosedMatchBetFailure();
+
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText("15.00 tUSDT")).toBeInTheDocument();
+    });
+
+    const confirmButton = await openTrialPredictionModal();
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(screen.getByText("賽事已結束")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("請刷新頁面後再試")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "立即刷新" })).toBeInTheDocument();
+    expect(alertSpy).not.toHaveBeenCalledWith(expect.stringContaining("賽事已結束"));
+  });
+
+  it("refreshes matches and closes the stale-match toast after clicking 立即刷新", async () => {
+    mockedConnected = true;
+    mockedPublicKey = { toBase58: () => "wallet-111" };
+    mockedSkipChainProgress = true;
+    (fetchLiveMatches as jest.Mock)
+      .mockResolvedValueOnce(MATCH_FIXTURE)
+      .mockResolvedValueOnce(MATCH_FIXTURE);
+    (getUSDTBalance as jest.Mock).mockResolvedValue(100);
+    (getTrialUSDTBalance as jest.Mock).mockResolvedValue(15);
+    window.history.replaceState({}, "", "/");
+    mockClosedMatchBetFailure();
+
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText("15.00 tUSDT")).toBeInTheDocument();
+    });
+
+    const confirmButton = await openTrialPredictionModal();
+    fireEvent.click(confirmButton);
+
+    const refreshButton = await screen.findByRole("button", { name: "立即刷新" });
+    const initialFetchCount = (fetchLiveMatches as jest.Mock).mock.calls.length;
+    fireEvent.click(refreshButton);
+
+    await waitFor(() => {
+      expect((fetchLiveMatches as jest.Mock).mock.calls.length).toBeGreaterThan(initialFetchCount);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText("賽事已結束")).not.toBeInTheDocument();
+    });
   });
 });

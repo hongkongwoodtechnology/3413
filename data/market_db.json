@@ -16,6 +16,47 @@
     "finalScore": "0-4",
     "settled": true
   },
+  "1734699": {
+    "realTotalPool": 0.03,
+    "liabilities": {
+      "home": 0.0555,
+      "draw": 0,
+      "away": 0
+    },
+    "pools": {
+      "home": 0.03,
+      "draw": 0,
+      "away": 0
+    },
+    "attractionWindowUsed": {
+      "home": 0,
+      "draw": 0,
+      "away": 0
+    },
+    "refundProcessed": true,
+    "adminSurplus": 0,
+    "settled": true,
+    "finalWinner": "away",
+    "finalScore": "0-2"
+  },
+  "1734712": {
+    "realTotalPool": 0.05,
+    "liabilities": {
+      "home": 0.09250000000000001,
+      "draw": 0,
+      "away": 0
+    },
+    "pools": {
+      "home": 0.05,
+      "draw": 0,
+      "away": 0
+    },
+    "attractionWindowUsed": {
+      "home": 0,
+      "draw": 0,
+      "away": 0
+    }
+  },
   "1746702": {
     "realTotalPool": 0.31,
     "liabilities": {
@@ -83,6 +124,29 @@
     "refundProcessed": true,
     "finalWinner": "home",
     "finalScore": "2-0"
+  },
+  "1759390": {
+    "realTotalPool": 0.03,
+    "liabilities": {
+      "home": 0,
+      "draw": 0,
+      "away": 0.0795
+    },
+    "pools": {
+      "home": 0,
+      "draw": 0,
+      "away": 0.03
+    },
+    "attractionWindowUsed": {
+      "home": 0,
+      "draw": 0,
+      "away": 0
+    },
+    "settled": true,
+    "refundProcessed": true,
+    "finalWinner": "away",
+    "finalScore": "0-1",
+    "adminSurplus": 0
   },
   "1766833": {
     "realTotalPool": 0.01,
