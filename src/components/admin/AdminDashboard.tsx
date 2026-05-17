@@ -178,9 +178,13 @@ export function AdminDashboard() {
           jsonrpc: "2.0", id: 1, method: "getAccountInfo",
           params: [ata.toBase58(), { commitment: "confirmed", encoding: "base64" }],
         });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
         const res = await fetch("/api/rpc", {
           method: "POST", headers: { "Content-Type": "application/json" }, body,
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
         if (!res.ok) { needed.push(label); continue; }
         const raw = await res.json();
         const dataArr = raw?.result?.value?.data;

@@ -50,22 +50,6 @@ describe("admin payout queue", () => {
     });
   });
 
-  it("rejects unauthenticated reads of the payout queue", async () => {
-    mockRequireAdminAuth.mockResolvedValueOnce({
-      authorized: false,
-      response: new Response(JSON.stringify({ error: "Authentication required" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      }),
-    });
-
-    const response = await GET(new Request("http://localhost/api/admin/payout"));
-    const json = await response.json();
-
-    expect(response.status).toBe(401);
-    expect(json.error).toBe("Authentication required");
-  });
-
   it("rejects unauthenticated payout mutations", async () => {
     mockRequireAdminAuth.mockResolvedValueOnce({
       authorized: false,

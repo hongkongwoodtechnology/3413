@@ -27,7 +27,7 @@ const NewsCenterPage = dynamic(() => import("@/components/NewsCenterPage").then(
 import { Suspense } from "react"
 import { PublicKey, Transaction, TransactionInstruction, ComputeBudgetProgram, SystemProgram } from "@solana/web3.js"
 import { getUSDTBalance, getTrialUSDTBalance, findAta as findAtaClient } from "@/lib/solana"
-import { HOUSE_WALLET, USDT_MINT, USDT_DECIMALS, PLATFORM_FEE_RATE, DEFAULT_COMMISSION_RATE, splitBetAmount, POOL_ADDRESS, formatMissingAtaInitializationMessage, getBoundReferrerStorageKey, resolvePreferredWalletAddress, getCombinedPlatformFeeAmount } from "@/lib/wallets"
+import { USDT_MINT, USDT_DECIMALS, PLATFORM_FEE_RATE, DEFAULT_COMMISSION_RATE, splitBetAmount, POOL_ADDRESS, formatMissingAtaInitializationMessage, getBoundReferrerStorageKey, resolvePreferredWalletAddress, getCombinedPlatformFeeAmount, getHouseWalletPublicKey } from "@/lib/wallets"
 import { getReturnRateForBetMode } from "@/lib/bet-mode"
 import { countActiveOutcomes } from "@/lib/market-rules"
 import { getProjectedPoolIncrement } from "@/lib/bet-preview"
@@ -387,7 +387,8 @@ export default function Home() {
 
   // Admin Check
   const isAdmin = useMemo(() => {
-    return connected && publicKey?.toBase58() === HOUSE_WALLET.toBase58();
+    const houseWallet = getHouseWalletPublicKey();
+    return Boolean(connected && houseWallet && publicKey?.toBase58() === houseWallet.toBase58());
   }, [connected, publicKey]);
 
   // Helper to get actual address for Phantom multi-account edge case
@@ -877,11 +878,15 @@ export default function Home() {
         if (!actualPublicKey) {
             throw new Error("Wallet public key is not available");
         }
+        const houseWallet = getHouseWalletPublicKey();
+        if (!houseWallet) {
+          throw new Error("平台收款地址未設定，請聯繫管理員配置 NEXT_PUBLIC_HOUSE_WALLET。");
+        }
 
         // 1) Derive ATAs — pool / combined platform fee 分流到各自收款地址
         const userATA = findAtaClient(USDT_MINT, actualPublicKey);
         const poolATA = findAtaClient(USDT_MINT, POOL_ADDRESS);
-        const adminATA = findAtaClient(USDT_MINT, HOUSE_WALLET);
+        const adminATA = findAtaClient(USDT_MINT, houseWallet);
 
         // 2) Fetch blockhash
         console.log("[Bet] Fetching blockhash...");
@@ -892,7 +897,7 @@ export default function Home() {
         console.log("[Bet] Checking destination ATAs...");
         const atasNeeded = await checkAtasNeeded([
           { ata: poolATA, owner: POOL_ADDRESS, label: '獎池 Pool (派彩用)' },
-          { ata: adminATA, owner: HOUSE_WALLET, label: '平台暫收手續費' },
+          { ata: adminATA, owner: houseWallet, label: '平台暫收手續費' },
         ]);
         const confirmedNeeded = atasNeeded.filter(a => !a.unknown);
         const numAtasConfirmed = confirmedNeeded.length;
@@ -903,7 +908,7 @@ export default function Home() {
           const totalSolNeeded = (ataCostLamports + gasEstLamports) / 1e9;
 
           const actualAddress = actualPublicKey.toBase58();
-          const isAdminUser = actualAddress === HOUSE_WALLET.toBase58();
+          const isAdminUser = actualAddress === houseWallet.toBase58();
           if (!isAdminUser) {
             throw new Error(formatMissingAtaInitializationMessage(confirmedNeeded.map((entry) => entry.label)));
           }

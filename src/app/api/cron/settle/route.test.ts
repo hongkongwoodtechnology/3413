@@ -2,6 +2,11 @@
  * @jest-environment node
  */
 
+process.env.NEXT_PUBLIC_POOL_WALLET = process.env.NEXT_PUBLIC_POOL_WALLET || "9FfHYyK8ZKsA82BPtierU4sWmwTS8QTGqrGqtTt6tEu7";
+process.env.NEXT_PUBLIC_HOUSE_WALLET = process.env.NEXT_PUBLIC_HOUSE_WALLET || "3veQRXa6347BofJAAGYrFuw2125E17P2LgAozCo7hXc2";
+process.env.ADMIN_WALLET_ADDRESS = process.env.ADMIN_WALLET_ADDRESS || process.env.NEXT_PUBLIC_HOUSE_WALLET;
+process.env.NEXT_PUBLIC_COMMISSION_WALLET = process.env.NEXT_PUBLIC_COMMISSION_WALLET || "5S4yRQn6EHjq2CzvHrniE8vwXj7qbnMBr8E8mYh5AS4x";
+
 const ADMIN_ADDRESS = "3veQRXa6347BofJAAGYrFuw2125E17P2LgAozCo7hXc2";
 
 type MockFileMap = Record<string, string>;

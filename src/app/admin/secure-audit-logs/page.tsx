@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { ComputeBudgetProgram, PublicKey, SystemProgram, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { Activity, AlertCircle, RefreshCw, Search, ShieldAlert } from 'lucide-react';
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
@@ -35,8 +35,23 @@ function findAta(mint: PublicKey, owner: PublicKey): PublicKey {
   return ata;
 }
 
+function hasValidAtaAccountData(raw: any): boolean {
+  const dataArr = raw?.result?.value?.data;
+  if (!dataArr) return false;
+
+  const b64 = Array.isArray(dataArr) ? dataArr[0] : dataArr;
+  if (!b64 || typeof b64 !== 'string') return false;
+
+  try {
+    return Buffer.from(b64, 'base64').length >= 72;
+  } catch {
+    return false;
+  }
+}
+
 export default function AdminAuditLogsPage() {
-  const { publicKey } = useWallet();
+  const { connection } = useConnection();
+  const { publicKey, sendTransaction } = useWallet();
   const [searchTerm, setSearchTerm] = useState('');
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,13 +105,21 @@ export default function AdminAuditLogsPage() {
           method: 'getAccountInfo',
           params: [ata.toBase58(), { commitment: 'confirmed', encoding: 'base64' }],
         });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
         const res = await fetch('/api/rpc', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body,
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
+        if (!res.ok) {
+          needed.push(label);
+          continue;
+        }
         const raw = await res.json();
-        if (raw?.result?.value?.data) {
+        if (hasValidAtaAccountData(raw)) {
           existing.push(label);
         } else {
           needed.push(label);
@@ -111,8 +134,7 @@ export default function AdminAuditLogsPage() {
   }, [destinationAtas]);
 
   const createAtas = useCallback(async () => {
-    const provider = (window as Window & { solana?: { signAndSendTransaction?: (tx: Transaction, opts?: { skipPreflight?: boolean }) => Promise<unknown> } }).solana;
-    if (!provider?.signAndSendTransaction || !publicKey || !ataCheckResult?.needed?.length) {
+    if (!sendTransaction || !publicKey || !ataCheckResult?.needed?.length) {
       setError('請先連接管理員錢包並完成 ATA 檢查');
       return;
     }
@@ -132,8 +154,10 @@ export default function AdminAuditLogsPage() {
           params: [{ commitment: 'finalized' }],
         }),
       });
+      if (!bhRes.ok) throw new Error('無法取得最新區塊雜湊');
       const bhJson = await bhRes.json();
       const blockhash = bhJson?.result?.value?.blockhash;
+      const lastValidBlockHeight = bhJson?.result?.value?.lastValidBlockHeight;
       if (!blockhash) throw new Error('無法取得最新區塊雜湊');
 
       const tx = new Transaction();
@@ -160,17 +184,20 @@ export default function AdminAuditLogsPage() {
         }));
       }
 
-      await provider.signAndSendTransaction(tx, { skipPreflight: false });
+      const signature = await sendTransaction(tx, connection, { skipPreflight: false });
+      if (typeof lastValidBlockHeight === 'number') {
+        await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
+      } else {
+        await connection.confirmTransaction(signature, 'confirmed');
+      }
       setAtaInitStatus('done');
-      setStatusMessage('ATA 建立交易已送出，正在重新檢查');
-      setTimeout(() => {
-        void checkAtas();
-      }, 3000);
+      setStatusMessage('ATA 建立交易已確認，正在重新檢查');
+      await checkAtas();
     } catch (err) {
       setAtaInitStatus('error');
       setError(err instanceof Error ? err.message : 'ATA 建立失敗');
     }
-  }, [ataCheckResult?.needed, checkAtas, destinationAtas, publicKey]);
+  }, [ataCheckResult?.needed, checkAtas, connection, destinationAtas, publicKey, sendTransaction]);
 
   return (
     <div className="space-y-6">

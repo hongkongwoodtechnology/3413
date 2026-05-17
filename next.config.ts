@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_HOUSE_WALLET: process.env.NEXT_PUBLIC_HOUSE_WALLET,
+    NEXT_PUBLIC_COMMISSION_WALLET: process.env.NEXT_PUBLIC_COMMISSION_WALLET,
+    NEXT_PUBLIC_POOL_WALLET: process.env.NEXT_PUBLIC_POOL_WALLET,
+    NEXT_PUBLIC_SOLANA_RPC_URL: process.env.NEXT_PUBLIC_SOLANA_RPC_URL,
+    NEXT_PUBLIC_USDT_MINT: process.env.NEXT_PUBLIC_USDT_MINT,
+  },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {

@@ -49,6 +49,11 @@ function saveBetsDb(db: Record<string, BetRecord[]>) {
 
 export async function GET() {
   try {
+    const auth = await requireAdminAuth(new Request("http://localhost/api/admin/payout"));
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
     const db = loadBetsDb();
     const payouts: PayoutEntry[] = [];
 

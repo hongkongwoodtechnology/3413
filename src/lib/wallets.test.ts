@@ -1,17 +1,60 @@
-import {
+process.env.NEXT_PUBLIC_POOL_WALLET = process.env.NEXT_PUBLIC_POOL_WALLET || '9FfHYyK8ZKsA82BPtierU4sWmwTS8QTGqrGqtTt6tEu7';
+process.env.NEXT_PUBLIC_HOUSE_WALLET = process.env.NEXT_PUBLIC_HOUSE_WALLET || 'GsdvTRXLqUnNRPy3enZ7KMbQHMXG37jNSvkxP2MhWdAT';
+process.env.ADMIN_WALLET_ADDRESS = process.env.ADMIN_WALLET_ADDRESS || process.env.NEXT_PUBLIC_HOUSE_WALLET;
+process.env.NEXT_PUBLIC_COMMISSION_WALLET = process.env.NEXT_PUBLIC_COMMISSION_WALLET || '5S4yRQn6EHjq2CzvHrniE8vwXj7qbnMBr8E8mYh5AS4x';
+
+const {
   splitBetAmount,
   formatMissingAtaInitializationMessage,
   getBoundReferrerStorageKey,
+  getHouseWalletPublicKey,
   getDestinationAtaTargets,
   resolvePreferredWalletAddress,
   stripLegacyAdminEntries,
   stripLegacyBetFields,
-} from './wallets';
+} = require('./wallets');
 
 describe('wallet destination helpers', () => {
+  it('does not crash on import when client wallet env is missing', () => {
+    const originalHouse = process.env.NEXT_PUBLIC_HOUSE_WALLET;
+    const originalAdmin = process.env.ADMIN_WALLET_ADDRESS;
+    const originalCommission = process.env.NEXT_PUBLIC_COMMISSION_WALLET;
+
+    delete process.env.NEXT_PUBLIC_HOUSE_WALLET;
+    delete process.env.ADMIN_WALLET_ADDRESS;
+    delete process.env.NEXT_PUBLIC_COMMISSION_WALLET;
+
+    jest.resetModules();
+
+    expect(() => require('./wallets')).not.toThrow();
+
+    if (originalHouse === undefined) {
+      delete process.env.NEXT_PUBLIC_HOUSE_WALLET;
+    } else {
+      process.env.NEXT_PUBLIC_HOUSE_WALLET = originalHouse;
+    }
+
+    if (originalAdmin === undefined) {
+      delete process.env.ADMIN_WALLET_ADDRESS;
+    } else {
+      process.env.ADMIN_WALLET_ADDRESS = originalAdmin;
+    }
+
+    if (originalCommission === undefined) {
+      delete process.env.NEXT_PUBLIC_COMMISSION_WALLET;
+    } else {
+      process.env.NEXT_PUBLIC_COMMISSION_WALLET = originalCommission;
+    }
+  });
+
   it('returns pool, house and commission ATA targets', () => {
     const targets = getDestinationAtaTargets();
     expect(targets.map((t) => t.key)).toEqual(['pool', 'house', 'commission']);
+  });
+
+  it('reads the house wallet from the public client env key', () => {
+    const houseWallet = getHouseWalletPublicKey();
+    expect(houseWallet?.toBase58()).toBe('GsdvTRXLqUnNRPy3enZ7KMbQHMXG37jNSvkxP2MhWdAT');
   });
 
   it('includes missing ATA labels in the initialization error message', () => {

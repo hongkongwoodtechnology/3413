@@ -1,19 +1,11 @@
 import { PublicKey } from "@solana/web3.js";
 
-function toPublicKey(value?: string | null): PublicKey | null {
-  const trimmed = value?.trim();
-  return trimmed ? new PublicKey(trimmed) : null;
-}
+function getOptionalPublicKeyEnv(...keys: string[]): PublicKey | null {
+  const value = keys
+    .map((key) => process.env[key]?.trim())
+    .find((candidate): candidate is string => Boolean(candidate));
 
-export function getHouseWalletPublicKey(): PublicKey | null {
-  return (
-    toPublicKey(process.env.NEXT_PUBLIC_HOUSE_WALLET) ||
-    toPublicKey(process.env.ADMIN_WALLET_ADDRESS)
-  );
-}
-
-export function getCommissionWalletPublicKey(): PublicKey | null {
-  return toPublicKey(process.env.NEXT_PUBLIC_COMMISSION_WALLET);
+  return value ? new PublicKey(value) : null;
 }
 
 // 資金池地址 (Pool) — 用於結算贏家派彩
@@ -24,10 +16,10 @@ export const POOL_ADDRESS = new PublicKey(
 );
 
 // 莊家抽水地址 (House Edge / Rake) — 平台 8% 手續費中 70% 歸平台
-export const HOUSE_WALLET = getHouseWalletPublicKey();
+export const HOUSE_WALLET = getOptionalPublicKeyEnv("NEXT_PUBLIC_HOUSE_WALLET", "ADMIN_WALLET_ADDRESS");
 
 // 佣金地址 (Commission) — 平台 8% 手續費中 30% 歸推薦人/佣金池
-export const COMMISSION_WALLET = getCommissionWalletPublicKey();
+export const COMMISSION_WALLET = getOptionalPublicKeyEnv("NEXT_PUBLIC_COMMISSION_WALLET");
 
 // USDT Mint 地址 (Solana Mainnet)
 export const USDT_MINT = new PublicKey(

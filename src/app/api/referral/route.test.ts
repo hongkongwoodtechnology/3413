@@ -2,6 +2,10 @@
  * @jest-environment node
  */
 
+process.env.NEXT_PUBLIC_HOUSE_WALLET = process.env.NEXT_PUBLIC_HOUSE_WALLET || '3veQRXa6347BofJAAGYrFuw2125E17P2LgAozCo7hXc2';
+process.env.ADMIN_WALLET_ADDRESS = process.env.ADMIN_WALLET_ADDRESS || process.env.NEXT_PUBLIC_HOUSE_WALLET;
+process.env.NEXT_PUBLIC_POOL_WALLET = process.env.NEXT_PUBLIC_POOL_WALLET || '9FfHYyK8ZKsA82BPtierU4sWmwTS8QTGqrGqtTt6tEu7';
+
 import { Connection, PublicKey } from '@solana/web3.js';
 
 class MockRequest {
@@ -74,7 +78,7 @@ Object.assign(globalThis, {
   Request: MockRequest,
 });
 
-import { GET, POST } from './route';
+const { GET, POST } = require('./route');
 
 const CURRENT_ADMIN_ADDRESS = '3veQRXa6347BofJAAGYrFuw2125E17P2LgAozCo7hXc2';
 const RETIRED_ADMIN_ADDRESS = '2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K';

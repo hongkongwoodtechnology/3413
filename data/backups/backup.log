@@ -119,3 +119,12 @@
   ZIP saved: C:\Users\USER\OneDrive\Documents\GAMBLE_backups\GAMBLE_2026-05-17_2207.zip (1342.7 KB)
   Removed old: GAMBLE_2026-05-16_0922.zip
 === SUCCESS ===
+=== Backup 2026-05-18_0000 ===
+[1/3] Git add + commit ...
+  Committed: [main 5c42f73] chore: daily backup 2026-05-18_0000  23 files changed, 1246 insertions(+), 127 deletions(-)  create mode 100644 docs/superpowers/plans/2026-05-17-local-build-auth-hardening-plan.md  create mode 100644 docs/superpowers/specs/2026-05-17-local-build-auth-hardening-design.md  create mode 100644 src/lib/security/auth.test.ts
+[2/3] Git push ...
+  Pushed to GitHub.
+[3/3] OneDrive ZIP backup ...
+  ZIP saved: C:\Users\USER\OneDrive\Documents\GAMBLE_backups\GAMBLE_2026-05-18_0000.zip (1356 KB)
+  Removed old: GAMBLE_2026-05-16_2017.zip
+=== SUCCESS ===

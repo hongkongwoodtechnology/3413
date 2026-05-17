@@ -11,7 +11,7 @@ import { Trophy, TrendingUp, ShieldCheck, Clock, Search, Filter, AlertTriangle, 
 import { DynamicOddsEngine, type RiskLevel } from "@/lib/odds-engine"
 import { LiquidityAnalyzer } from "@/lib/analytics"
 import { shouldSkipChainProgressForBet } from "@/lib/bet-progress"
-import { LocalizedLink as Link } from "@/components/LocalizedLink"
+import Link from "next/link"
 import { useLanguage } from "@/components/LanguageProvider"
 import dynamic from "next/dynamic"
 
@@ -27,7 +27,7 @@ const NewsCenterPage = dynamic(() => import("@/components/NewsCenterPage").then(
 import { Suspense } from "react"
 import { PublicKey, Transaction, TransactionInstruction, ComputeBudgetProgram, SystemProgram } from "@solana/web3.js"
 import { getUSDTBalance, getTrialUSDTBalance, findAta as findAtaClient } from "@/lib/solana"
-import { USDT_MINT, USDT_DECIMALS, PLATFORM_FEE_RATE, DEFAULT_COMMISSION_RATE, splitBetAmount, POOL_ADDRESS, formatMissingAtaInitializationMessage, getBoundReferrerStorageKey, resolvePreferredWalletAddress, getCombinedPlatformFeeAmount, getHouseWalletPublicKey } from "@/lib/wallets"
+import { HOUSE_WALLET, USDT_MINT, USDT_DECIMALS, PLATFORM_FEE_RATE, DEFAULT_COMMISSION_RATE, splitBetAmount, POOL_ADDRESS, formatMissingAtaInitializationMessage, getBoundReferrerStorageKey, resolvePreferredWalletAddress, getCombinedPlatformFeeAmount } from "@/lib/wallets"
 import { getReturnRateForBetMode } from "@/lib/bet-mode"
 import { countActiveOutcomes } from "@/lib/market-rules"
 import { getProjectedPoolIncrement } from "@/lib/bet-preview"
@@ -387,8 +387,7 @@ export default function Home() {
 
   // Admin Check
   const isAdmin = useMemo(() => {
-    const houseWallet = getHouseWalletPublicKey();
-    return Boolean(connected && houseWallet && publicKey?.toBase58() === houseWallet.toBase58());
+    return Boolean(connected && HOUSE_WALLET && publicKey?.toBase58() === HOUSE_WALLET.toBase58());
   }, [connected, publicKey]);
 
   // Helper to get actual address for Phantom multi-account edge case
@@ -832,9 +831,7 @@ export default function Home() {
         const currentAddressForReferral = getActualAddress();
         let commissionRate = 0;
         if (currentAddressForReferral) {
-          const storedReferrer = localStorage.getItem(
-            getBoundReferrerStorageKey(currentAddressForReferral)
-          );
+          const storedReferrer = localStorage.getItem(`bound_referrer_${currentAddressForReferral}`);
           if (storedReferrer) {
             try {
               const refRes = await fetch(`/api/referral?address=${storedReferrer}`);
@@ -880,15 +877,14 @@ export default function Home() {
         if (!actualPublicKey) {
             throw new Error("Wallet public key is not available");
         }
-        const houseWallet = getHouseWalletPublicKey();
-        if (!houseWallet) {
+        if (!HOUSE_WALLET) {
           throw new Error("平台收款地址未設定，請聯繫管理員配置 NEXT_PUBLIC_HOUSE_WALLET。");
         }
 
         // 1) Derive ATAs — pool / combined platform fee 分流到各自收款地址
         const userATA = findAtaClient(USDT_MINT, actualPublicKey);
         const poolATA = findAtaClient(USDT_MINT, POOL_ADDRESS);
-        const adminATA = findAtaClient(USDT_MINT, houseWallet);
+        const adminATA = findAtaClient(USDT_MINT, HOUSE_WALLET);
 
         // 2) Fetch blockhash
         console.log("[Bet] Fetching blockhash...");
@@ -899,7 +895,7 @@ export default function Home() {
         console.log("[Bet] Checking destination ATAs...");
         const atasNeeded = await checkAtasNeeded([
           { ata: poolATA, owner: POOL_ADDRESS, label: '獎池 Pool (派彩用)' },
-          { ata: adminATA, owner: houseWallet, label: '平台暫收手續費' },
+          { ata: adminATA, owner: HOUSE_WALLET, label: '平台暫收手續費' },
         ]);
         const confirmedNeeded = atasNeeded.filter(a => !a.unknown);
         const numAtasConfirmed = confirmedNeeded.length;
@@ -910,7 +906,7 @@ export default function Home() {
           const totalSolNeeded = (ataCostLamports + gasEstLamports) / 1e9;
 
           const actualAddress = actualPublicKey.toBase58();
-          const isAdminUser = actualAddress === houseWallet.toBase58();
+          const isAdminUser = actualAddress === HOUSE_WALLET.toBase58();
           if (!isAdminUser) {
             throw new Error(formatMissingAtaInitializationMessage(confirmedNeeded.map((entry) => entry.label)));
           }
@@ -1075,26 +1071,6 @@ export default function Home() {
 
           setMyBets(prev => [newBet, ...prev]);
           setBetsRefreshKey(k => k + 1);
-
-          if (useBonus && saveJson.data?.id) {
-              fetch('/api/referral', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                      action: 'record_bonus_bet',
-                      userAddress: currentAddress,
-                      betId: saveJson.data.id,
-                      amount: betAmountNum,
-                  })
-              })
-              .then(res => res.json())
-              .then(data => {
-                  if (data.success && typeof data.newBalance === 'number') {
-                      setTrialBalance(data.newBalance);
-                  }
-              })
-              .catch(err => console.error('Failed to persist bonus bet ledger:', err));
-          }
 
           // Notify Referral API to process potential bonus (Only for real money bets)
           if (!useBonus) {
@@ -1527,14 +1503,13 @@ export default function Home() {
                     : 'bg-neutral-800/50 text-neutral-400 hover:text-white hover:bg-neutral-800 border border-transparent hover:border-neutral-700/50'
                 }`}
               >
-                {filter === 'live' ? (
+                {filter === 'live' && (
                   <span className="inline-flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 bg-error rounded-full animate-pulse" />
                     {t('filter.time.live')}
                   </span>
-                ) : (
-                  t(`filter.time.${filter}`)
                 )}
+                {filter !== 'live' && t(`filter.time.${filter}`)}
               </button>
             ))}
           </div>
@@ -2125,22 +2100,6 @@ export default function Home() {
           </Link>
         </div>
       </footer>
-
-      {/* Visually Hidden SEO Block for "World Cup" & "Sports Betting" in multiple languages */}
-      <div className="sr-only" aria-hidden="true">
-        <h1>Decentralized Sports Prediction Market - World Cup 2026 Betting</h1>
-        <p>PolyBall is the premier Web3 sports prediction market on Solana. Bet on the World Cup, Premier League, Champions League, and more with zero hidden fees and instant crypto payouts.</p>
-        <h2>世界盃投注與去中心化體育博彩</h2>
-        <p>在 Solana 上體驗最公平的世界盃投注與加密貨幣賭球。零延遲派彩，賠率全透明，您的資金永遠在您的錢包中。</p>
-        <h2>世界杯投注与去中心化体育博彩</h2>
-        <p>在 Solana 上体验最公平的世界杯投注与加密货币赌球。零延迟派彩，赔率全透明，您的资金永远在您的钱包中。</p>
-        <h2>Apuestas Deportivas y Copa del Mundo</h2>
-        <p>Mercado de predicción deportiva descentralizado en Solana. Apuestas en la Copa del Mundo con pagos instantáneos en criptomonedas.</p>
-        <h2>Paris sportifs sur la Coupe du Monde</h2>
-        <p>Pariez sur la Coupe du Monde et d'autres sports avec la crypto sur Solana. Paiements instantanés et cotes transparentes.</p>
-        <h2>ワールドカップ 仮想通貨 スポーツベット</h2>
-        <p>Solana（ソラナ）の分散型スポーツ予測市場。ワールドカップやプレミアリーグに暗号資産（仮想通貨）でベット。</p>
-      </div>
 
       {/* Transaction Overlay */}
       {(txStatus === 'submitting' || txStatus === 'confirming' || txStatus === 'success') && (

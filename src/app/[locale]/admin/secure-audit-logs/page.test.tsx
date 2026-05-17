@@ -8,6 +8,14 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AdminAuditLogsPage from './page';
 
+const mockSendTransaction = jest.fn();
+const mockPublicKey = {
+  toBase58: () => 'AdminWallet1111111111111111111111111111111',
+};
+const mockConnection = {
+  confirmTransaction: jest.fn(),
+};
+
 jest.mock('@solana/web3.js', () => ({
   PublicKey: class MockPublicKey {
     value: string;
@@ -44,7 +52,11 @@ jest.mock('@solana/web3.js', () => ({
 
 jest.mock('@solana/wallet-adapter-react', () => ({
   useWallet: () => ({
-    publicKey: null,
+    publicKey: mockPublicKey,
+    sendTransaction: mockSendTransaction,
+  }),
+  useConnection: () => ({
+    connection: mockConnection,
   }),
 }));
 
@@ -79,7 +91,7 @@ describe('AdminAuditLogsPage ATA checks', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    global.fetch = jest.fn(async (input: RequestInfo | URL) => {
+    global.fetch = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
 
       if (url.includes('/api/admin/logs')) {
@@ -90,6 +102,21 @@ describe('AdminAuditLogsPage ATA checks', () => {
       }
 
       if (url.includes('/api/rpc')) {
+        const body = typeof init?.body === 'string' ? JSON.parse(init.body) : null;
+        if (body?.method === 'getLatestBlockhash') {
+          return {
+            ok: true,
+            json: async () => ({
+              result: {
+                value: {
+                  blockhash: 'mock-blockhash',
+                  lastValidBlockHeight: 123,
+                },
+              },
+            }),
+          } as Response;
+        }
+
         return {
           ok: true,
           json: async () => ({
@@ -125,5 +152,29 @@ describe('AdminAuditLogsPage ATA checks', () => {
 
     expect(screen.getByText('平台淨收益收款')).toBeInTheDocument();
     expect(screen.queryByText('目前沒有待建立項目')).not.toBeInTheDocument();
+  });
+
+  it('creates missing ATAs through the wallet adapter flow', async () => {
+    const user = userEvent.setup();
+    mockSendTransaction.mockResolvedValue('mock-signature');
+    mockConnection.confirmTransaction.mockResolvedValue({ value: { err: null } });
+
+    render(<AdminAuditLogsPage />);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith('/api/admin/logs?search=');
+    });
+
+    await user.click(screen.getByRole('button', { name: '檢查 ATA' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '建立缺少的 ATA' })).toBeEnabled();
+    });
+
+    await user.click(screen.getByRole('button', { name: '建立缺少的 ATA' }));
+
+    await waitFor(() => {
+      expect(mockSendTransaction).toHaveBeenCalledTimes(1);
+    });
   });
 });

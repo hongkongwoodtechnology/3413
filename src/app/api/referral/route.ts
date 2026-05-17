@@ -63,10 +63,23 @@ const RPC_ENDPOINTS = [
   "https://solana-api.projectserum.com",
   "https://api.mainnet-beta.solana.com",
 ].filter(Boolean) as string[];
+
+function requireEnv(...keys: string[]): string {
+  const value = keys
+    .map((key) => process.env[key]?.trim())
+    .find((candidate): candidate is string => Boolean(candidate));
+
+  if (!value) {
+    throw new Error(`Missing required env: ${keys.join(' or ')}`);
+  }
+
+  return value;
+}
+
 const USDT_DECIMALS = 6;
 const USDT_MINT = new PublicKey(process.env.NEXT_PUBLIC_USDT_MINT || "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB");
 const POOL_WALLET = new PublicKey(process.env.NEXT_PUBLIC_POOL_WALLET || "9FfHYyK8ZKsA82BPtierU4sWmwTS8QTGqrGqtTt6tEu7");
-const HOUSE_WALLET = new PublicKey(process.env.NEXT_PUBLIC_HOUSE_WALLET || "3veQRXa6347BofJAAGYrFuw2125E17P2LgAozCo7hXc2");
+const HOUSE_WALLET = new PublicKey(requireEnv('NEXT_PUBLIC_HOUSE_WALLET', 'ADMIN_WALLET_ADDRESS'));
 const ZERO = BigInt(0);
 const RETIRED_REFERRAL_ADMIN = '2Ntk8UGJqPDVD977oDiYpsN1Y2RASWRjFVFFrAywSd5K';
 
