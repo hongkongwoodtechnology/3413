@@ -39,6 +39,24 @@
     "finalWinner": "away",
     "finalScore": "0-2"
   },
+  "1734706": {
+    "realTotalPool": 0.07400000000000001,
+    "liabilities": {
+      "home": 0.0668,
+      "draw": 0.03128,
+      "away": 0.0867
+    },
+    "pools": {
+      "home": 0.04,
+      "draw": 0.004,
+      "away": 0.03
+    },
+    "attractionWindowUsed": {
+      "home": 0.04,
+      "draw": 0.004,
+      "away": 0
+    }
+  },
   "1734712": {
     "realTotalPool": 0.05,
     "liabilities": {

@@ -2050,7 +2050,7 @@ export default function Home() {
                                 <div className="px-4 py-3 border-b border-neutral-800 bg-neutral-900/50 flex items-center justify-between">
                                     <span className="text-sm font-bold text-white truncate">{displayMatchName}</span>
                                     <span className="text-xs text-neutral-500">
-                                        {group.bets.length} {language === 'zh-TW' ? '筆' : language === 'zh-CN' ? '笔' : 'bets'} · {t('bets.amount')}: {groupTotal.toFixed(2)} USDT
+                                        {group.bets.length} {language === 'zh-TW' ? '筆' : language === 'zh-CN' ? '笔' : 'bets'} · {t('bets.amount')}: {groupTotal.toFixed(4)} USDT
                                     </span>
                                 </div>
                                 <div className="grid grid-cols-4 text-xs font-bold text-neutral-500 uppercase tracking-wider p-3 border-b border-neutral-800/50 bg-neutral-900/30">
@@ -2066,7 +2066,7 @@ export default function Home() {
                                                 {t(`outcome.${bet.outcome}`)}
                                             </div>
                                             <div className="text-right font-mono font-bold text-white">
-                                                {typeof bet.amount === 'number' ? bet.amount.toFixed(2) : '0.00'}
+                                                {typeof bet.amount === 'number' ? bet.amount.toFixed(4) : '0.0000'}
                                                 {bet.useBonus && <span className="ml-1 text-[10px] text-orange-400 font-sans">{t('bets.trial')}</span>}
                                             </div>
                                             <div className="text-right font-mono text-primary-blue font-bold">
