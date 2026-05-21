@@ -14,6 +14,8 @@ let mockedConnected = false;
 let mockedPublicKey: { toBase58: () => string } | null = null;
 let mockedSendTransaction = jest.fn();
 let mockedSkipChainProgress = false;
+let mockedDisplayOdds: { home: number; draw: number; away: number } | null = null;
+let mockedLockedOdds: number | null = null;
 const mockedSplitBetAmount = jest.fn(() => ({ pool: 4, house: 0, commission: 0, support: 0 }));
 
 const MATCH_FIXTURE = [
@@ -188,6 +190,9 @@ jest.mock("@/lib/odds-engine", () => ({
     }: {
       pools: { home: number; draw: number; away: number };
     }) {
+      if (mockedDisplayOdds) {
+        return mockedDisplayOdds;
+      }
       return {
         home: Number((pools.home / 10).toFixed(2)),
         draw: Number((pools.draw / 10).toFixed(2)),
@@ -196,6 +201,9 @@ jest.mock("@/lib/odds-engine", () => ({
     }
 
     calculatePhaseAwareLockedOdds({ betAmount }: { betAmount: number }) {
+      if (mockedLockedOdds !== null) {
+        return { odds: mockedLockedOdds, riskLevel: "normal" };
+      }
       return { odds: 1.5 + betAmount / 100, riskLevel: "normal" };
     }
 
@@ -208,6 +216,9 @@ jest.mock("@/lib/odds-engine", () => ({
     }
 
     calculateDynamicOdds(_: unknown, __: unknown, betAmount: number) {
+      if (mockedLockedOdds !== null) {
+        return { odds: mockedLockedOdds, riskLevel: "normal" };
+      }
       return { odds: 1.5 + betAmount / 100, riskLevel: "normal" };
     }
 
@@ -265,6 +276,7 @@ jest.mock("@/lib/wallets", () => ({
   getCombinedPlatformFeeAmount: ({ house, commission }: { house: number; commission: number }) =>
     house + commission,
   formatMissingAtaInitializationMessage: () => "missing ata",
+  getHouseWalletPublicKey: () => null,
   getBoundReferrerStorageKey: (address: string) => `bound_referrer_${address}`,
   resolvePreferredWalletAddress: (walletAddress: string, phantomAddress: string | null) =>
     phantomAddress || walletAddress,
@@ -664,6 +676,69 @@ describe("[locale] Home referral landing", () => {
 
     await waitFor(() => {
       expect(screen.queryByText("賽事已結束")).not.toBeInTheDocument();
+    });
+  });
+
+  it("caps focused bet odds to 15 across the localized pre-bet flow and submitted payload", async () => {
+    mockedLanguage = "zh-TW";
+    mockedConnected = true;
+    mockedPublicKey = { toBase58: () => "wallet-111" };
+    mockedSkipChainProgress = true;
+    mockedDisplayOdds = { home: 17.02, draw: 2, away: 1.5 };
+    mockedLockedOdds = 17.02;
+    (fetchLiveMatches as jest.Mock).mockResolvedValue(MATCH_FIXTURE);
+    (getUSDTBalance as jest.Mock).mockResolvedValue(100);
+    (getTrialUSDTBalance as jest.Mock).mockResolvedValue(15);
+    window.history.replaceState({}, "", "/zh-TW");
+
+    const fetchSpy = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.startsWith("/api/balance?address=")) {
+        return makeJsonResponse({ success: true, balance: 100 });
+      }
+      if (url.startsWith("/api/bets?address=")) {
+        return makeJsonResponse({ success: true, data: [] });
+      }
+      if (url === "/api/bets" && init?.method === "POST") {
+        const body = JSON.parse(String(init.body));
+        expect(body.odds).toBe(15);
+        return makeJsonResponse({
+          success: true,
+          data: { ...body, id: "bet-cap-test-zh", odds: 15, netPayout: 60 },
+        });
+      }
+      return makeJsonResponse({ success: true, data: [] });
+    });
+    global.fetch = fetchSpy as jest.Mock;
+
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(screen.getByText("15.00 tUSDT")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: /17\.02/ })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "label.trial_funds" }));
+    fireEvent.change(screen.getByPlaceholderText("0.00"), {
+      target: { value: "4" },
+    });
+
+    await waitFor(() => {
+      const buttonTexts = screen.getAllByRole("button").map((button) => button.textContent);
+      expect(buttonTexts).toContain("outcome.home15");
+    });
+
+    expect(screen.getByRole("button", { name: /btn\.confirm · ×15\.0000/i })).toBeInTheDocument();
+    expect(screen.getByText("×15.0000")).toBeInTheDocument();
+    expect(screen.getByText("60.00 tUSDT")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /btn\.confirm · ×15\.0000/i }));
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "/api/bets",
+        expect.objectContaining({ method: "POST" })
+      );
     });
   });
 });

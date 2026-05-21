@@ -11,6 +11,7 @@ import { Trophy, TrendingUp, ShieldCheck, Clock, Search, Filter, AlertTriangle, 
 import { DynamicOddsEngine, type RiskLevel } from "@/lib/odds-engine"
 import { LiquidityAnalyzer } from "@/lib/analytics"
 import { shouldSkipChainProgressForBet } from "@/lib/bet-progress"
+import { clampLockedOdds, MAX_LOCKED_ODDS } from "@/lib/locked-odds"
 import { LocalizedLink as Link } from "@/components/LocalizedLink"
 import { useLanguage } from "@/components/LanguageProvider"
 import dynamic from "next/dynamic"
@@ -754,7 +755,18 @@ export default function Home() {
       return quote ? { odds: quote.odds, riskLevel: quote.riskLevel } : null;
   }, [currentMatch, selectedOutcome, betAmountNum, currentOdds, oddsEngine, effectiveCommissionRate, effectiveReturnRate, effectiveBetAmountForQuote]);
 
-  const selectedOdds = projectedOdds ? projectedOdds.odds : (selectedOutcome ? currentOdds[selectedOutcome as keyof typeof currentOdds] : 0)
+  const cappedProjectedOdds = useMemo(() => {
+    if (!projectedOdds) return null;
+
+    return {
+      ...projectedOdds,
+      odds: clampLockedOdds(projectedOdds.odds),
+    };
+  }, [projectedOdds]);
+
+  const selectedOdds = cappedProjectedOdds
+    ? cappedProjectedOdds.odds
+    : (selectedOutcome ? clampLockedOdds(currentOdds[selectedOutcome as keyof typeof currentOdds]) : 0)
   
   const potentialReturn = (betAmountNum * selectedOdds).toFixed(2)
   const fee = (betAmountNum * 0.005).toFixed(2)

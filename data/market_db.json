@@ -131,6 +131,29 @@
     "finalWinner": "home",
     "finalScore": "2-1"
   },
+  "1756192": {
+    "realTotalPool": 0.37,
+    "liabilities": {
+      "home": 0.09250000000000001,
+      "draw": 0.3,
+      "away": 0.32600999999999997
+    },
+    "pools": {
+      "home": 0.05,
+      "draw": 0.02,
+      "away": 0.3
+    },
+    "attractionWindowUsed": {
+      "home": 0,
+      "draw": 0.02,
+      "away": 0.3
+    },
+    "refundProcessed": true,
+    "settled": true,
+    "finalWinner": "home",
+    "finalScore": "1-0",
+    "adminSurplus": 0.2479
+  },
   "1756203": {
     "realTotalPool": 2.01,
     "liabilities": {
