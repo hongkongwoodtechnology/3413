@@ -12,6 +12,7 @@ import { clampLockedOdds } from '@/lib/locked-odds';
 
 // 檔案式資料庫路徑
 const DB_FILE_PATH = path.join(process.cwd(), 'data', 'bets_db.json');
+const REFERRAL_DB_PATH = path.join(process.cwd(), 'data', 'referral_db.json');
 const TRIAL_FUNDS_CAP_RATIO = 0.15;
 const FLOAT_PRECISION_EPSILON = 1e-9;
 
@@ -105,6 +106,24 @@ function saveDatabase(db: Record<string, BetRecord[]>) {
 
     } catch (error) {
         console.error('Error saving bets database:', error);
+    }
+}
+
+function deductBonusBalance(userAddress: string, amount: number): void {
+    try {
+        if (!fs.existsSync(REFERRAL_DB_PATH)) return;
+
+        const raw = fs.readFileSync(REFERRAL_DB_PATH, 'utf-8');
+        const db = JSON.parse(raw) as Record<string, any>;
+
+        const userData = db[userAddress];
+        if (!userData?.balances || typeof userData.balances.bonus !== 'number') return;
+
+        userData.balances.bonus = Math.max(0, userData.balances.bonus - amount);
+
+        fs.writeFileSync(REFERRAL_DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
+    } catch (e) {
+        console.error('[Bets] Failed to deduct bonus balance:', e);
     }
 }
 
@@ -336,6 +355,10 @@ export async function POST(request: Request) {
 
         db[userAddress].unshift(newBet);
         saveDatabase(db);
+
+        if (useBonus) {
+            deductBonusBalance(userAddress, amount);
+        }
 
         if (!currentMarket.pools) {
             currentMarket.pools = { home: 0, draw: 0, away: 0 };

@@ -14,6 +14,7 @@ jest.mock('fs', () => ({
     mkdirSync: jest.fn(),
     readFileSync: jest.fn((file: string) => {
       if (String(file).includes('bets_db.json')) return '{}';
+      if (String(file).includes('referral_db.json')) return '{}';
       if (String(file).includes('market_db.json')) {
         return JSON.stringify({
           '101': {
@@ -38,14 +39,19 @@ jest.mock('@/lib/reserve', () => ({
 function mockDatabases({
   betsDb = {},
   marketDb,
+  referralDb = {},
 }: {
   betsDb?: Record<string, unknown>;
   marketDb?: Record<string, unknown>;
+  referralDb?: Record<string, unknown>;
 }) {
   flushMarketDbCache();
   (fs.readFileSync as jest.Mock).mockImplementation((file: string) => {
     if (String(file).includes('bets_db.json')) {
       return JSON.stringify(betsDb);
+    }
+    if (String(file).includes('referral_db.json')) {
+      return JSON.stringify(referralDb);
     }
     if (String(file).includes('market_db.json')) {
       return JSON.stringify(
@@ -687,5 +693,96 @@ describe('bets POST', () => {
     const savedMarketDb = JSON.parse(String(lastMarketWrite?.[1] || '{}'));
 
     expect(savedMarketDb['101'].attractionWindowUsed.away).toBe(10);
+  });
+
+  it('deducts the bonus balance from referral_db.json when a trial-funds bet is saved', async () => {
+    mockDatabases({
+      referralDb: {
+        'bonus-user': {
+          stats: { total: '0 USDT', withdrawable: '0 USDT', month: '0 USDT', friends: 0 },
+          commissions: [],
+          referees: [],
+          balances: { usdt: 0, bonus: 50 },
+        },
+      },
+    });
+
+    const req = new Request('http://localhost/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: 'bonus-user',
+        matchId: 101,
+        matchName: 'A vs B',
+        outcome: 'home',
+        amount: 10,
+        odds: 2.0,
+        useBonus: true,
+        timestamp: 1234567890,
+        liveMinute: 12,
+      }),
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+
+    const writeCalls = (fs.writeFileSync as jest.Mock).mock.calls;
+    const referralWrites = writeCalls.filter(([filePath]) =>
+      String(filePath).includes('referral_db.json')
+    );
+    expect(referralWrites.length).toBeGreaterThan(0);
+
+    const lastReferralWrite = referralWrites[referralWrites.length - 1];
+    const savedReferralDb = JSON.parse(String(lastReferralWrite?.[1] || '{}'));
+    expect(savedReferralDb['bonus-user'].balances.bonus).toBe(40);
+  });
+
+  it('does not deduct bonus balance when a real-money bet is saved', async () => {
+    mockDatabases({
+      referralDb: {
+        'real-user': {
+          stats: { total: '0 USDT', withdrawable: '0 USDT', month: '0 USDT', friends: 0 },
+          commissions: [],
+          referees: [],
+          balances: { usdt: 0, bonus: 30 },
+        },
+      },
+    });
+
+    const req = new Request('http://localhost/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: 'real-user',
+        matchId: 101,
+        matchName: 'A vs B',
+        outcome: 'home',
+        amount: 10,
+        odds: 2.0,
+        useBonus: false,
+        timestamp: 1234567890,
+        liveMinute: 12,
+      }),
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+
+    const writeCalls = (fs.writeFileSync as jest.Mock).mock.calls;
+    const referralWrites = writeCalls.filter(([filePath]) =>
+      String(filePath).includes('referral_db.json')
+    );
+
+    if (referralWrites.length > 0) {
+      const lastReferralWrite = referralWrites[referralWrites.length - 1];
+      const savedReferralDb = JSON.parse(String(lastReferralWrite?.[1] || '{}'));
+      expect(savedReferralDb['real-user'].balances.bonus).toBe(30);
+    }
   });
 });
