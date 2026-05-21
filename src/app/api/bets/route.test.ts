@@ -128,6 +128,58 @@ describe('bets POST', () => {
     expect(getNetPayoutFromLockedOdds(20, 2.15, true)).toBeCloseTo(43, 6);
   });
 
+  it('clamps submitted locked odds above 15 before saving the bet and computing payout', async () => {
+    const req = new Request('http://localhost/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: 'locked-odds-cap-user',
+        matchId: 101,
+        matchName: 'A vs B',
+        outcome: 'away',
+        amount: 2,
+        odds: 17.02,
+        useBonus: false,
+        timestamp: 1234567893,
+        liveMinute: 12,
+      }),
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.data.odds).toBe(15);
+    expect(json.data.netPayout).toBe(30);
+  });
+
+  it('keeps submitted locked odds unchanged when they are already at or below 15', async () => {
+    const req = new Request('http://localhost/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: 'locked-odds-under-cap-user',
+        matchId: 101,
+        matchName: 'A vs B',
+        outcome: 'home',
+        amount: 2,
+        odds: 6.808,
+        useBonus: false,
+        timestamp: 1234567894,
+        liveMinute: 12,
+      }),
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.data.odds).toBe(6.808);
+    expect(json.data.netPayout).toBeCloseTo(13.616, 6);
+  });
+
   it('locks initial odds while the market is still single-sided', async () => {
     const req = new Request('http://localhost/api/bets', {
       method: 'POST',

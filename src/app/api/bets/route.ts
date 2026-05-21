@@ -8,6 +8,7 @@ import { PLATFORM_FEE_RATE } from '@/lib/wallets';
 import { addToReserve, loadReserve } from '@/lib/reserve';
 import { DynamicOddsEngine } from '@/lib/odds-engine';
 import { countActiveOutcomes, splitBetByAttractionWindow } from '@/lib/market-rules';
+import { clampLockedOdds } from '@/lib/locked-odds';
 
 // 檔案式資料庫路徑
 const DB_FILE_PATH = path.join(process.cwd(), 'data', 'bets_db.json');
@@ -190,7 +191,9 @@ export async function POST(request: Request) {
             db[userAddress] = [];
         }
 
-        const lockedOdds = odds || 1.0;
+        const lockedOdds = clampLockedOdds(
+            typeof odds === 'number' ? odds : 1.0
+        );
         const netPayout = getNetPayoutFromLockedOdds(amount, lockedOdds, !!useBonus);
 
         const marketDb = loadMarketDb();
