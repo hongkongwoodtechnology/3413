@@ -774,23 +774,23 @@ export default function Home() {
   const handlePrediction = async () => {
     if (!connected || !amount || !selectedMatchId || !selectedOutcome || !publicKey) return
     
-    if (!projectedOdds) {
+    if (!cappedProjectedOdds) {
         alert(t('error.insufficient_counterparty') || "The bet is rejected: insufficient counterparty funds.");
         return;
     }
 
-    if (projectedOdds.riskLevel === 'position_limit') {
+    if (cappedProjectedOdds.riskLevel === 'position_limit') {
         const maxPct = (oddsEngine.getMaxPositionRatio() * 100).toFixed(0);
         alert(t('error.position_limit')?.replace('{max}', maxPct) || `投注被拒絕：該選項已達到持倉上限 ${maxPct}%，請等待更多資金注入其他選項。`);
         return;
     }
 
-    if (projectedOdds.riskLevel === 'refund_single_side') {
-        await executePrediction(projectedOdds.odds);
+    if (cappedProjectedOdds.riskLevel === 'refund_single_side') {
+        await executePrediction(cappedProjectedOdds.odds);
         return;
     }
 
-    await executePrediction(projectedOdds.odds);
+    await executePrediction(cappedProjectedOdds.odds);
   };
 
   const cancelControllerRef = useRef<AbortController | null>(null);
@@ -1244,16 +1244,15 @@ export default function Home() {
   }, [dateFilter]);
 
   const betActionNode = useMemo(() => {
-    const maxPreviewOdds = 15;
     const hasPreviewOdds =
-      !!projectedOdds &&
+      !!cappedProjectedOdds &&
       !!amount &&
-      Number.isFinite(projectedOdds.odds);
+      Number.isFinite(cappedProjectedOdds.odds);
     const confirmLabel = hasPreviewOdds
-      ? `${t('btn.confirm')} · ×${Math.min(projectedOdds.odds, maxPreviewOdds).toFixed(4)}`
+      ? `${t('btn.confirm')} · ×${cappedProjectedOdds.odds.toFixed(4)}`
       : t('btn.confirm');
 
-    if (projectedOdds?.riskLevel === 'position_limit') {
+    if (cappedProjectedOdds?.riskLevel === 'position_limit') {
       return (
         <div className="space-y-3 p-4 bg-error/10 border border-error/30 rounded-xl">
           <div className="flex items-start gap-3">
@@ -1271,7 +1270,7 @@ export default function Home() {
         </div>
       );
     }
-    if (projectedOdds === null && amount) {
+    if (cappedProjectedOdds === null && amount) {
       return (
         <Button 
           className="w-full bg-error/20 text-error hover:bg-error/30 font-bold tracking-wide"
@@ -1302,8 +1301,8 @@ export default function Home() {
       </Button>
     );
   }, [
-    projectedOdds,
-    projectedOdds?.riskLevel,
+    cappedProjectedOdds,
+    cappedProjectedOdds?.riskLevel,
     amount,
     txStatus,
     useBonus,
@@ -1679,6 +1678,13 @@ export default function Home() {
                                 matchOdds = { home: result.home, draw: result.draw, away: result.away };
                             }
                         }
+                        if (isFocused) {
+                            matchOdds = {
+                                home: Math.min(matchOdds.home, MAX_LOCKED_ODDS),
+                                draw: Math.min(matchOdds.draw, MAX_LOCKED_ODDS),
+                                away: Math.min(matchOdds.away, MAX_LOCKED_ODDS),
+                            };
+                        }
                         const totalPool = (() => {
                             if (match.marketData?.pools) {
                                 return match.marketData.pools.home + match.marketData.pools.draw + match.marketData.pools.away;
@@ -1930,12 +1936,12 @@ export default function Home() {
                               })()}
 
                               <div className="p-4 rounded-lg space-y-2 border border-neutral-800 bg-neutral-900/50">
-                                {projectedOdds && (
+                                {cappedProjectedOdds && (
                                   <div className="flex justify-between text-sm">
                                     <span className="text-neutral-500">{t('bets.odds') || '鎖定賠率'}</span>
-                                    <span className={`font-bold ${projectedOdds.riskLevel === 'counterparty' ? 'text-amber-400' : projectedOdds.riskLevel === 'refund_single_side' ? 'text-neutral-400' : 'text-primary-blue'}`}>
-                                      ×{projectedOdds.odds.toFixed(4)}
-                                      {projectedOdds.riskLevel === 'refund_single_side' && <span className="text-[10px] text-neutral-500 ml-1">({t('bets.status.refunded') || '可退款'})</span>}
+                                    <span className={`font-bold ${cappedProjectedOdds.riskLevel === 'counterparty' ? 'text-amber-400' : cappedProjectedOdds.riskLevel === 'refund_single_side' ? 'text-neutral-400' : 'text-primary-blue'}`}>
+                                      ×{cappedProjectedOdds.odds.toFixed(4)}
+                                      {cappedProjectedOdds.riskLevel === 'refund_single_side' && <span className="text-[10px] text-neutral-500 ml-1">({t('bets.status.refunded') || '可退款'})</span>}
                                     </span>
                                   </div>
                                 )}
@@ -1946,7 +1952,7 @@ export default function Home() {
                                 <div className={`flex justify-between items-end pt-2 border-t ${useBonus && trialBalance > 0 ? 'border-orange-500/20' : 'border-neutral-800'}`}>
                                   <span className="text-sm font-medium text-neutral-300">{t('label.potential_payout')}</span>
                                   <span className={`text-xl font-bold ${useBonus && trialBalance > 0 ? 'text-orange-400 drop-shadow-[0_0_8px_rgba(249,115,22,0.3)]' : 'text-primary-blue drop-shadow-[0_0_8px_rgba(20,241,149,0.3)]'}`}>
-                                    {projectedOdds ? (betAmountNum * projectedOdds.odds).toFixed(2) : "0.00"} {useBonus && trialBalance > 0 ? 'tUSDT' : 'USDT'}
+                                    {cappedProjectedOdds ? (betAmountNum * cappedProjectedOdds.odds).toFixed(2) : "0.00"} {useBonus && trialBalance > 0 ? 'tUSDT' : 'USDT'}
                                   </span>
                                 </div>
                               {betActionNode}
