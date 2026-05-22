@@ -36,6 +36,6 @@ describe('calculateReferralStats', () => {
 
     expect(stats.total).toBe('0.080000 USDT');
     expect(stats.month).toBe('0.080000 USDT');
-    expect(stats.withdrawable).toBe('0.080000 USDT');
+    expect(stats.withdrawable).toBe('0.050000 USDT');
   });
 });

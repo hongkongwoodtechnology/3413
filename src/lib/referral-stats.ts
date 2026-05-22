@@ -33,9 +33,16 @@ export function calculateReferralStats(params: {
     0
   );
 
+  const totalWithdrawn = params.commissions
+    .filter((c) => c.referee === 'WITHDRAWAL')
+    .reduce((sum, c) => {
+      const val = parseFloat(c.commission) || 0;
+      return sum + Math.abs(val);
+    }, 0);
+
   return {
     total: `${totalEarned.toFixed(6)} USDT`,
     month: `${monthEarned.toFixed(6)} USDT`,
-    withdrawable: `${approvedEarned.toFixed(6)} USDT`,
+    withdrawable: `${Math.max(0, approvedEarned - totalWithdrawn).toFixed(6)} USDT`,
   };
 }
