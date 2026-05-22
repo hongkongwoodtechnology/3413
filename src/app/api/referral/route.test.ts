@@ -74,6 +74,12 @@ jest.mock('@solana/spl-token', () => ({
   getAssociatedTokenAddress: (...args: unknown[]) => mockGetAssociatedTokenAddress(...args),
 }));
 
+const mockSendUsdtCommission = jest.fn();
+
+jest.mock('@/lib/solana-transfer', () => ({
+  sendUsdtCommission: (...args: unknown[]) => mockSendUsdtCommission(...args),
+}));
+
 Object.assign(globalThis, {
   Request: MockRequest,
 });
@@ -561,5 +567,147 @@ describe('Referral API', () => {
     expect(res.status).toBe(200);
     expect(json.success).toBe(true);
     expect(Array.isArray(json.data)).toBe(true);
+  });
+
+  describe('withdraw_commission - 鏈上 SPL 轉帳', () => {
+    const withdrawUser = 'AQDd735nBNxWxoeNAG7bUn2SA56fennrCYRR1Ykc4fyq';
+
+    beforeEach(() => {
+      mockSendUsdtCommission.mockReset();
+      process.env.NEXT_PUBLIC_HOUSE_WALLET = '3veQRXa6347BofJAAGYrFuw2125E17P2LgAozCo7hXc2';
+      process.env.ADMIN_WALLET_ADDRESS = '3veQRXa6347BofJAAGYrFuw2125E17P2LgAozCo7hXc2';
+      process.env.ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || '5HfhiSp2Xg8oZXr82z8spJiVnLGVyueq3838JkFWXc9m1RT4TsfgfFDG1b6jGMbEL5XHWEyD1Trb7UX3KsfPKn1y';
+
+      const db = JSON.parse(mockReferralDb);
+      const userData = db[withdrawUser] || {
+        stats: { total: '0.010560 USDT', withdrawable: '0.010560 USDT', month: '0.010560 USDT', friends: 1 },
+        commissions: [],
+        referees: [],
+        balances: { usdt: 0, bonus: 0 },
+      };
+      userData.stats.total = '0.010560 USDT';
+      userData.stats.withdrawable = '0.010560 USDT';
+      db[withdrawUser] = userData;
+      mockReferralDb = JSON.stringify(db);
+    });
+
+    it('calls sendUsdtCommission with correct params and returns the tx signature', async () => {
+      mockSendUsdtCommission.mockResolvedValueOnce({
+        success: true,
+        signature: 'abc123-commission-tx',
+      });
+
+      const req = new Request('http://localhost:3000/api/referral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'withdraw_commission',
+          userAddress: withdrawUser,
+          amount: 0.010560,
+        }),
+      });
+
+      const res = await POST(req);
+      const json = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(json.success).toBe(true);
+      expect(json.signature).toBe('abc123-commission-tx');
+      expect(mockSendUsdtCommission).toHaveBeenCalledTimes(1);
+
+      const callArgs = mockSendUsdtCommission.mock.calls[0];
+      expect(callArgs[1]).toBe(CURRENT_ADMIN_ADDRESS);
+      expect(callArgs[2]).toBe(withdrawUser);
+      expect(callArgs[3]).toBe(0.010560);
+    });
+
+    it('returns 502 with error when on-chain transfer fails', async () => {
+      mockSendUsdtCommission.mockResolvedValueOnce({
+        success: false,
+        error: 'insufficient funds',
+      });
+
+      const req = new Request('http://localhost:3000/api/referral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'withdraw_commission',
+          userAddress: withdrawUser,
+          amount: 0.010560,
+        }),
+      });
+
+      const res = await POST(req);
+      const json = await res.json();
+
+      expect(res.status).toBe(502);
+      expect(json.success).toBe(false);
+      expect(json.error).toContain('insufficient funds');
+    });
+
+    it('does not update DB when transfer fails', async () => {
+      const dbBefore = JSON.parse(mockReferralDb);
+      const withdrawableBefore = dbBefore[withdrawUser]?.stats?.withdrawable || '0.010560 USDT';
+
+      mockSendUsdtCommission.mockResolvedValueOnce({
+        success: false,
+        error: 'network error',
+      });
+
+      await POST(new Request('http://localhost:3000/api/referral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'withdraw_commission',
+          userAddress: withdrawUser,
+          amount: 0.010560,
+        }),
+      }));
+
+      const dbAfter = JSON.parse(mockReferralDb);
+      expect(dbAfter[withdrawUser]?.stats?.withdrawable).toBe(withdrawableBefore);
+    });
+
+    it('updates withdrawable balance after successful transfer', async () => {
+      mockSendUsdtCommission.mockResolvedValueOnce({
+        success: true,
+        signature: 'commission-transfer-tx',
+      });
+
+      await POST(new Request('http://localhost:3000/api/referral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'withdraw_commission',
+          userAddress: withdrawUser,
+          amount: 0.010560,
+        }),
+      }));
+
+      const dbAfter = JSON.parse(mockReferralDb);
+      expect(dbAfter[withdrawUser].stats.withdrawable).toBe('0.000000 USDT');
+      expect(dbAfter[withdrawUser].commissions[0].referee).toBe('WITHDRAWAL');
+      expect(dbAfter[withdrawUser].commissions[0].status).toBe('settled');
+      expect(dbAfter[withdrawUser].commissions[0].settlementTx).toBe('commission-transfer-tx');
+    });
+
+    it('returns 400 when amount exceeds withdrawable', async () => {
+      const req = new Request('http://localhost:3000/api/referral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'withdraw_commission',
+          userAddress: withdrawUser,
+          amount: 99,
+        }),
+      });
+
+      const res = await POST(req);
+      const json = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(json.error).toContain('Insufficient');
+      expect(mockSendUsdtCommission).not.toHaveBeenCalled();
+    });
   });
 });

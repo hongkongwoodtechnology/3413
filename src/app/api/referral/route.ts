@@ -7,6 +7,7 @@ import { resolveCanonicalReferrerAddress, syncUniqueRefereeBinding } from '@/lib
 import { calculateReferralStats } from '@/lib/referral-stats';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
+import { sendUsdtCommission } from '@/lib/solana-transfer';
 
 // 模擬資料庫
 interface Commission {
@@ -628,7 +629,7 @@ export async function POST(request: Request) {
             });
         }
 
-        // 獲取所有推薦人的排行榜 (僅限管理員)
+        // 用戶提現佣金 - 真實鏈上 SPL Token 轉帳
         if (body.action === 'withdraw_commission') {
             const { userAddress, amount } = body;
             
@@ -642,6 +643,29 @@ export async function POST(request: Request) {
             if (amount > currentWithdrawable) {
                 return NextResponse.json({ error: 'Insufficient withdrawable balance' }, { status: 400 });
             }
+
+            const adminSecretKeyStr = process.env.ADMIN_SECRET_KEY?.trim();
+            if (!adminSecretKeyStr) {
+                return NextResponse.json({
+                    success: false,
+                    error: 'ADMIN_SECRET_KEY 未設定，無法執行鏈上轉帳',
+                }, { status: 400 });
+            }
+
+            const transferResult = await sendUsdtCommission(
+                adminSecretKeyStr,
+                HOUSE_WALLET.toBase58(),
+                userAddress,
+                amount
+            );
+
+            if (!transferResult.success) {
+                console.error(`[WITHDRAW FAILED] ${userAddress} ${amount} USDT: ${transferResult.error}`);
+                return NextResponse.json({
+                    success: false,
+                    error: `鏈上轉帳失敗：${transferResult.error}`,
+                }, { status: 502 });
+            }
             
             const newWithdrawable = currentWithdrawable - amount;
             userData.stats.withdrawable = newWithdrawable.toFixed(6) + ' USDT';
@@ -653,14 +677,20 @@ export async function POST(request: Request) {
                 fee: amount.toFixed(6),
                 commission: (-amount).toFixed(6),
                 timestamp: new Date().toISOString(),
-                status: 'settled' as const
+                status: 'settled' as const,
+                settlementTx: transferResult.signature,
             };
             userData.commissions.unshift(withdrawalRecord);
             
             saveDatabase(db);
             
-            console.log(`[WITHDRAW] ${userAddress} requested withdrawal of ${amount} USDT. Remaining: ${userData.stats.withdrawable}`);
-            return NextResponse.json({ success: true, message: 'Withdrawal recorded', newBalance: userData.stats.withdrawable });
+            console.log(`[WITHDRAW] ${userAddress} received ${amount} USDT | tx: ${transferResult.signature} | remaining: ${userData.stats.withdrawable}`);
+            return NextResponse.json({
+                success: true,
+                message: 'Withdrawal completed on-chain',
+                signature: transferResult.signature,
+                newBalance: userData.stats.withdrawable,
+            });
         }
 
         if (body.action === 'get_leaderboard') {
