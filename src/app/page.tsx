@@ -392,6 +392,49 @@ export default function Home() {
     return Boolean(connected && houseWallet && publicKey?.toBase58() === houseWallet.toBase58());
   }, [connected, publicKey]);
 
+  // --- ADMIN BETTING STATS (即時投注額顯示) ---
+  type MatchBettingStat = {
+    matchId: string;
+    homeAmount: number;
+    drawAmount: number;
+    awayAmount: number;
+    totalPool: number;
+  };
+  const [bettingStatsMap, setBettingStatsMap] = useState<Map<string, MatchBettingStat>>(new Map());
+  const bettingStatsFetchingRef = useRef(false);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetchStats = async () => {
+      if (bettingStatsFetchingRef.current) return;
+      bettingStatsFetchingRef.current = true;
+      try {
+        const res = await fetch('/api/admin/betting-stats');
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data?.matches) {
+            const map = new Map<string, MatchBettingStat>();
+            for (const m of json.data.matches) {
+              map.set(m.matchId, {
+                matchId: m.matchId,
+                homeAmount: m.homeAmount,
+                drawAmount: m.drawAmount,
+                awayAmount: m.awayAmount,
+                totalPool: m.totalPool,
+              });
+            }
+            setBettingStatsMap(map);
+          }
+        }
+      } catch {} finally {
+        bettingStatsFetchingRef.current = false;
+      }
+    };
+    fetchStats();
+    const interval = setInterval(fetchStats, 10000);
+    return () => clearInterval(interval);
+  }, [isAdmin]);
+
   // Helper to get actual address for Phantom multi-account edge case
   const getActualAddress = () => {
     if (!publicKey) return null;
@@ -1797,6 +1840,44 @@ export default function Home() {
                               );
                             })}
                           </div>
+
+                          {/* Admin: 即時投注額顯示 */}
+                          {isAdmin && (() => {
+                            const stat = bettingStatsMap.get(String(match.id));
+                            if (!stat || stat.totalPool <= 0) return null;
+                            const max = Math.max(stat.homeAmount, stat.drawAmount, stat.awayAmount, 1);
+                            const pct = (v: number) => ((v / max) * 100).toFixed(0);
+                            return (
+                              <div className="rounded-xl border border-primary-purple/15 bg-primary-purple/5 px-3 py-2">
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-primary-purple/70">投注額</span>
+                                  <span className="text-[10px] font-mono text-primary-purple">{stat.totalPool.toFixed(2)}</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                  {(['home', 'draw', 'away'] as const).map((k) => {
+                                    const amt = k === 'home' ? stat.homeAmount : k === 'draw' ? stat.drawAmount : stat.awayAmount;
+                                    return (
+                                      <div key={k} className="flex flex-col items-center">
+                                        <div className="w-full h-1 rounded-full bg-neutral-800 mb-1 overflow-hidden">
+                                          <div
+                                            className={`h-full rounded-full transition-all duration-500 ${
+                                              k === 'home' ? 'bg-green-500/70' : k === 'draw' ? 'bg-blue-500/70' : 'bg-orange-500/70'
+                                            }`}
+                                            style={{ width: `${pct(amt)}%` }}
+                                          />
+                                        </div>
+                                        <span className={`text-[10px] font-mono tabular-nums ${
+                                          amt > 0 ? (k === 'home' ? 'text-green-400' : k === 'draw' ? 'text-blue-400' : 'text-orange-400') : 'text-neutral-600'
+                                        }`}>
+                                          {amt.toFixed(2)}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })()}
 
                           {/* Betting Input Area (Progressive Disclosure) */}
                           {selectedMatchId === match.id && (

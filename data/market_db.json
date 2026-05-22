@@ -114,6 +114,25 @@
     "finalWinner": "home",
     "finalScore": "4-1"
   },
+  "1753876": {
+    "realTotalPool": 0.4,
+    "liabilities": {
+      "home": 0.349599,
+      "draw": 0.32600999999999997,
+      "away": 0.24964200000000003
+    },
+    "pools": {
+      "home": 0.03,
+      "draw": 0.3,
+      "away": 0.07
+    },
+    "attractionWindowUsed": {
+      "home": 0.03,
+      "draw": 0.3,
+      "away": 0.02
+    },
+    "refundProcessed": true
+  },
   "1756130": {
     "realTotalPool": 6.01,
     "liabilities": {
@@ -233,6 +252,24 @@
     "settled": true,
     "finalWinner": "away",
     "finalScore": "0-2"
+  },
+  "1772738": {
+    "realTotalPool": 0.08,
+    "liabilities": {
+      "home": 0.077601,
+      "draw": 0,
+      "away": 0.14950000000000002
+    },
+    "pools": {
+      "home": 0.03,
+      "draw": 0,
+      "away": 0.05
+    },
+    "attractionWindowUsed": {
+      "home": 0.03,
+      "draw": 0,
+      "away": 0
+    }
   },
   "1773573": {
     "realTotalPool": 0.042,
