@@ -248,3 +248,12 @@
   ZIP saved: C:\Users\USER\OneDrive\Documents\GAMBLE_backups\GAMBLE_2026-05-22_1936.zip (1532.4 KB)
   Removed old: GAMBLE_2026-05-21_1200.zip
 === SUCCESS ===
+=== Backup 2026-05-22_2000 ===
+[1/3] Git add + commit ...
+  Committed: [main f699099] chore: daily backup 2026-05-22_2000  5 files changed, 419 insertions(+), 5 deletions(-)  create mode 100644 src/lib/solana-transfer.ts
+[2/3] Git push ...
+  Pushed to GitHub.
+[3/3] OneDrive ZIP backup ...
+  ZIP saved: C:\Users\USER\OneDrive\Documents\GAMBLE_backups\GAMBLE_2026-05-22_2000.zip (1536.4 KB)
+  Removed old: GAMBLE_2026-05-21_1612.zip
+=== SUCCESS ===

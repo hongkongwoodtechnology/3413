@@ -370,6 +370,20 @@ export async function GET(request: Request) {
             modified = true;
         }
     }
+
+    const withdrawalCountBefore = userData.commissions.filter(c => c.referee === 'WITHDRAWAL').length;
+    userData.commissions = userData.commissions.filter(c => {
+        if (c.referee !== 'WITHDRAWAL') return true;
+        if (!(c as any).settlementTx) {
+            console.warn(`[REFERRAL-GET] 移除無鏈上記錄的舊提現: ${(c as any).id}, 金額: ${c.commission}`);
+            modified = true;
+            return false;
+        }
+        return true;
+    });
+    if (userData.commissions.filter(c => c.referee === 'WITHDRAWAL').length !== withdrawalCountBefore) {
+        console.log(`[REFERRAL-GET] 已過濾 ${withdrawalCountBefore - userData.commissions.filter(c => c.referee === 'WITHDRAWAL').length} 筆無 settlementTx 的舊提現記錄`);
+    }
     
     const calculatedStats = calculateReferralStats({ commissions: userData.commissions });
     const nextTotal = calculatedStats.total;
