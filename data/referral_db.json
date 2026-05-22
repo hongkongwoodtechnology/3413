@@ -851,9 +851,9 @@
   },
   "AQDd735nBNxWxoeNAG7bUn2SA56fennrCYRR1Ykc4fyq\\": {
     "stats": {
-      "total": "0.000000 USDT",
-      "withdrawable": "0.000000 USDT",
-      "month": "0.000000 USDT",
+      "total": "0.002400 USDT",
+      "withdrawable": "0.002400 USDT",
+      "month": "0.002400 USDT",
       "friends": 1
     },
     "commissions": [
@@ -864,8 +864,9 @@
         "fee": "0.004000",
         "commission": "0.001200",
         "timestamp": "2026-05-22T15:10:09.069Z",
-        "status": "pending",
-        "signature": "2VmPX2eXKhh6ALexYFHwp4NrdgjUuFByeAqJSWaQUDPZvUVVjPwwcjiPjsqz92FUFqctqqMJ2aTTFj6HeEPGinq2"
+        "status": "approved",
+        "signature": "2VmPX2eXKhh6ALexYFHwp4NrdgjUuFByeAqJSWaQUDPZvUVVjPwwcjiPjsqz92FUFqctqqMJ2aTTFj6HeEPGinq2",
+        "approvedAt": "2026-05-22T16:36:53.480Z"
       },
       {
         "id": "comm-1779459356657-6c5glg",
@@ -874,8 +875,9 @@
         "fee": "0.004000",
         "commission": "0.001200",
         "timestamp": "2026-05-22T14:15:56.657Z",
-        "status": "pending",
-        "signature": "4UeYSDPzr7qCWyk7ryqsZqsn24bWvEty5bC2tUPqKdFWjHWynaTHSbfeyD1vT6G5swyroBkmakEAePRDNBSF2Tb3"
+        "status": "approved",
+        "signature": "4UeYSDPzr7qCWyk7ryqsZqsn24bWvEty5bC2tUPqKdFWjHWynaTHSbfeyD1vT6G5swyroBkmakEAePRDNBSF2Tb3",
+        "approvedAt": "2026-05-22T16:36:53.480Z"
       }
     ],
     "referees": [
