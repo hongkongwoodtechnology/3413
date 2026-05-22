@@ -717,7 +717,7 @@ describe("[locale] Home referral landing", () => {
       expect(screen.getByText("15.00 tUSDT")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getAllByRole("button", { name: /17\.02/ })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "outcome.home 15" }));
     fireEvent.click(screen.getByRole("button", { name: "label.trial_funds" }));
     fireEvent.change(screen.getByPlaceholderText("0.00"), {
       target: { value: "4" },

@@ -1678,13 +1678,11 @@ export default function Home() {
                                 matchOdds = { home: result.home, draw: result.draw, away: result.away };
                             }
                         }
-                        if (isFocused) {
-                            matchOdds = {
-                                home: Math.min(matchOdds.home, MAX_LOCKED_ODDS),
-                                draw: Math.min(matchOdds.draw, MAX_LOCKED_ODDS),
-                                away: Math.min(matchOdds.away, MAX_LOCKED_ODDS),
-                            };
-                        }
+                        matchOdds = {
+                            home: Math.min(matchOdds.home, MAX_LOCKED_ODDS),
+                            draw: Math.min(matchOdds.draw, MAX_LOCKED_ODDS),
+                            away: Math.min(matchOdds.away, MAX_LOCKED_ODDS),
+                        };
                         const totalPool = (() => {
                             if (match.marketData?.pools) {
                                 return match.marketData.pools.home + match.marketData.pools.draw + match.marketData.pools.away;

@@ -575,7 +575,7 @@ describe("Home referral landing", () => {
       expect(screen.getByText("Alpha FC")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getAllByRole("button", { name: /17\.02/ })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "outcome.home 15" }));
     fireEvent.click(screen.getByRole("button", { name: "label.trial_funds" }));
     fireEvent.change(screen.getByPlaceholderText("0.00"), {
       target: { value: "4" },
