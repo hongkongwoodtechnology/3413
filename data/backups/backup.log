@@ -266,3 +266,12 @@
   ZIP saved: C:\Users\USER\OneDrive\Documents\GAMBLE_backups\GAMBLE_2026-05-22_2030.zip (1541 KB)
   Removed old: GAMBLE_2026-05-22_0030.zip
 === SUCCESS ===
+=== Backup 2026-05-23_0000 ===
+[1/3] Git add + commit ...
+  Committed: [main 68a4f7e] chore: daily backup 2026-05-23_0000  16 files changed, 1963 insertions(+), 15 deletions(-)  create mode 100644 analyze_house_edge.js  create mode 100644 data/backups/bets_db_2026-05-22.json  create mode 100644 src/app/api/admin/betting-stats/route.ts  create mode 100644 src/components/admin/markets/BettingBreakdownPanel.tsx
+[2/3] Git push ...
+  Pushed to GitHub.
+[3/3] OneDrive ZIP backup ...
+  ZIP saved: C:\Users\USER\OneDrive\Documents\GAMBLE_backups\GAMBLE_2026-05-23_0000.zip (1560.2 KB)
+  Removed old: GAMBLE_2026-05-22_0400.zip
+=== SUCCESS ===
