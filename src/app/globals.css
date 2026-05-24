@@ -160,3 +160,23 @@ body {
   mask-image: linear-gradient(to right, black 90%, transparent 100%);
   -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
 }
+
+/* ── RTL (Right-to-Left) Support for Arabic ── */
+[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] .mask-gradient-right {
+  mask-image: linear-gradient(to left, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to left, black 90%, transparent 100%);
+}
+
+[dir="rtl"] .ltr-override {
+  direction: ltr;
+  text-align: left;
+}
+
+[dir="rtl"] .wallet-adapter-modal-wrapper {
+  direction: ltr;
+}

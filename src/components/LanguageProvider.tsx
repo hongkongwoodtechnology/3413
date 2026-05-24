@@ -50,6 +50,11 @@ export function LanguageProvider({ children, initialLocale }: { children: ReactN
   const [language, setLanguageState] = useState<Language>(initialLocale || 'en');
 
   useEffect(() => {
+    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = language;
+  }, [language]);
+
+  useEffect(() => {
     if (initialLocale) {
       setLanguageState(initialLocale);
       return;

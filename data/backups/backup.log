@@ -323,3 +323,12 @@
   ZIP saved: C:\Users\USER\OneDrive\Documents\GAMBLE_backups\GAMBLE_2026-05-24_1540.zip (1565 KB)
   Removed old: GAMBLE_2026-05-22_2000.zip
 === SUCCESS ===
+=== Backup 2026-05-24_1600 ===
+[1/3] Git add + commit ...
+  Committed: [main 94f1325] chore: daily backup 2026-05-24_1600  16 files changed, 696 insertions(+), 280 deletions(-)  create mode 100644 _analyze_keys2.js  create mode 100644 _analyze_keys3.js  create mode 100644 _analyze_v4.js  create mode 100644 _missing_ar.json  create mode 100644 _missing_de.json  create mode 100644 _missing_es.json  create mode 100644 _missing_fr.json  create mode 100644 _missing_ja.json  create mode 100644 _missing_ko.json  create mode 100644 _missing_pt.json  create mode 100644 _missing_ru.json  create mode 100644 _missing_th.json  create mode 100644 _missing_zh-CN.json  create mode 100644 _missing_zh-TW.json
+[2/3] Git push ...
+  Pushed to GitHub.
+[3/3] OneDrive ZIP backup ...
+  ZIP saved: C:\Users\USER\OneDrive\Documents\GAMBLE_backups\GAMBLE_2026-05-24_1600.zip (1576.9 KB)
+  Removed old: GAMBLE_2026-05-22_2030.zip
+=== SUCCESS ===

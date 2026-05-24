@@ -342,7 +342,7 @@ describe("[locale] Home referral landing", () => {
     }) as jest.Mock;
   });
 
-  it.each(["en", "zh-TW", "zh-CN", "es", "ar", "fr", "ru", "de", "ja", "ko", "pt", "la", "th"])(
+  it.each(["en", "zh-TW", "zh-CN", "es", "ar", "fr", "ru", "de", "ja", "ko", "pt", "th"])(
     "renders the referral landing flow for %s without triggering the previous crash",
     async (locale) => {
       mockedLanguage = locale;
