@@ -12,7 +12,8 @@
       "signature": null,
       "status": "win",
       "useBonus": true,
-      "timestamp": 1778873825140
+      "timestamp": 1778873825140,
+      "paidOut": true
     },
     {
       "id": "bet-1777587535391-64hza4",
@@ -454,7 +455,8 @@
       "signature": "52a683sYDSeGB8nunCp6BpEw7jTtWA3sWF95Smj9sAPAwZe7suQRoaMBYxExtXRvRTVBPAwY8vq7G1bn32HNEdwg",
       "status": "win",
       "useBonus": false,
-      "timestamp": 1778868345011
+      "timestamp": 1778868345011,
+      "paidOut": true
     },
     {
       "id": "bet-1778860381170-nk3nkh",
@@ -468,7 +470,8 @@
       "signature": "2jxsuMwvczFu61mJWAsDwHixTYXkZtJGxmjd7DyCbsWPXhf6afB26x9wm9SNMPbN126mXq1eF4V9w3L1LQ2FsDDP",
       "status": "refunded",
       "useBonus": false,
-      "timestamp": 1778860381128
+      "timestamp": 1778860381128,
+      "paidOut": true
     },
     {
       "id": "bet-1778855551905-xhr0l6",
@@ -482,7 +485,8 @@
       "signature": "4EL8ygpeBYwZs6szfoWMQKCBadevJiz2c7KWKYeDGpmJGmwZ7YveZi1nLS5eRTtG6fdHtgy1s53cGfCNLbuknG44",
       "status": "refunded",
       "useBonus": false,
-      "timestamp": 1778855551826
+      "timestamp": 1778855551826,
+      "paidOut": true
     }
   ],
   "AQDd735nBNxWxoeNAG7bUn2SA56fennrCYRR1Ykc4fyq": [
@@ -498,7 +502,8 @@
       "signature": "2VmPX2eXKhh6ALexYFHwp4NrdgjUuFByeAqJSWaQUDPZvUVVjPwwcjiPjsqz92FUFqctqqMJ2aTTFj6HeEPGinq2",
       "status": "win",
       "useBonus": false,
-      "timestamp": 1779462593193
+      "timestamp": 1779462593193,
+      "paidOut": true
     },
     {
       "id": "bet-1779462261257-gu7tvm",
@@ -526,7 +531,8 @@
       "signature": null,
       "status": "win",
       "useBonus": true,
-      "timestamp": 1779460979883
+      "timestamp": 1779460979883,
+      "paidOut": true
     },
     {
       "id": "bet-1779459342818-manph2",
@@ -568,7 +574,8 @@
       "signature": "2yZZuFiexxazggg33JsUai7x2Dbcg1Pg7ZqmD23evPfEDhqQ4Qi7EgNw6RfLXQUrzbwW2BmaecawpjzmYEMYVFoG",
       "status": "win",
       "useBonus": false,
-      "timestamp": 1779328537539
+      "timestamp": 1779328537539,
+      "paidOut": true
     },
     {
       "id": "bet-1779052373803-zmyu3",
@@ -610,7 +617,8 @@
       "signature": "2Ko5VUuxegZ77j58wMC6jMfJUJoCgXNhBM8yw6MQKwqzJPikMh4wTgoGVbsqMN6MdW8BMsYyBDiKAsqoF1mrQxKG",
       "status": "win",
       "useBonus": false,
-      "timestamp": 1778981913395
+      "timestamp": 1778981913395,
+      "paidOut": true
     },
     {
       "id": "bet-1778971049217-wzys5i",
@@ -638,7 +646,8 @@
       "signature": "Q8LqAQP9wp8nLXb3EJJciX4ydtwibBQhL1gP7ZJkz2QmEZoprVwNCAepTDwZC79omYiYKrTSRbZi4sYYcSHozTJ",
       "status": "refunded",
       "useBonus": false,
-      "timestamp": 1778967908912
+      "timestamp": 1778967908912,
+      "paidOut": true
     },
     {
       "id": "bet-1778966789980-9pwwd",
@@ -652,7 +661,8 @@
       "signature": "5jioj2Xy35QYGSFD4TrBThV6XbDUUVxk6Ghb7QXqvLhNDuBX42kYNqxtatZ7Vobr6iBqyajkBQs83DfiSNHi8USe",
       "status": "win",
       "useBonus": false,
-      "timestamp": 1778966773872
+      "timestamp": 1778966773872,
+      "paidOut": true
     }
   ]
 }
