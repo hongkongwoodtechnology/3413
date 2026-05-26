@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "../globals.css";
 import "@solana/wallet-adapter-react-ui/styles.css";
-import { WalletContextProvider } from "@/components/WalletContextProvider";
 import { LanguageProvider } from "@/components/LanguageProvider";
 import { LANGUAGES } from "@/lib/i18n";
 
@@ -80,9 +79,7 @@ export default async function RootLayout({
 
   return (
     <LanguageProvider initialLocale={locale as any}>
-      <WalletContextProvider>
-        {children}
-      </WalletContextProvider>
+      {children}
     </LanguageProvider>
   );
 }
