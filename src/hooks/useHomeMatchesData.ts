@@ -123,12 +123,13 @@ export function useHomeMatchesData<T extends MatchWithMarketData>({
     let inFlightSince = 0;
     let consecutiveFailures = 0;
     const pollMs = 15000;
+    const maxConsecutiveFailures = 12;
     const maxInflightMs = 30000;
     const canPoll = () =>
       typeof document === "undefined" ? true : document.visibilityState === "visible";
 
     const onVisibilityChange = () => {
-      if (canPoll()) {
+      if (canPoll() && consecutiveFailures < maxConsecutiveFailures) {
         void startFetch();
       }
     };
@@ -137,12 +138,25 @@ export function useHomeMatchesData<T extends MatchWithMarketData>({
       document.addEventListener("visibilitychange", onVisibilityChange);
     }
 
+    const scheduleNextPoll = (delayMs: number) => {
+      if (!isMounted) return;
+      if (consecutiveFailures >= maxConsecutiveFailures) {
+        const recoveryDelay = Math.min(consecutiveFailures, 30) * pollMs;
+        timeoutId = setTimeout(() => {
+          consecutiveFailures = 0;
+          void poll();
+        }, recoveryDelay);
+        return;
+      }
+      timeoutId = setTimeout(poll, delayMs);
+    };
+
     const poll = async () => {
       if (!isMounted) {
         return;
       }
       if (!canPoll()) {
-        timeoutId = setTimeout(poll, pollMs);
+        scheduleNextPoll(pollMs);
         return;
       }
       if (inFlight) {
@@ -150,7 +164,7 @@ export function useHomeMatchesData<T extends MatchWithMarketData>({
           inFlight = false;
           inFlightSince = 0;
         } else {
-          timeoutId = setTimeout(poll, pollMs);
+          scheduleNextPoll(pollMs);
           return;
         }
       }
@@ -175,17 +189,19 @@ export function useHomeMatchesData<T extends MatchWithMarketData>({
           errorText.includes("ERR_ABORTED") ||
           errorText.toLowerCase().includes("aborted");
 
-        if (!isAbort) {
+        if (isAbort) {
+          // Aborted requests are expected during navigation/language switch;
+          // do not count them as failures to avoid unnecessary backoff.
+        } else {
           console.error("Background fetch failed", error);
+          consecutiveFailures++;
         }
-
-        consecutiveFailures++;
       } finally {
         inFlight = false;
         inFlightSince = 0;
         if (isMounted) {
           const backoff = Math.min(consecutiveFailures, 4) * pollMs;
-          timeoutId = setTimeout(poll, pollMs + backoff);
+          scheduleNextPoll(pollMs + backoff);
         }
       }
     };

@@ -1054,7 +1054,7 @@ export default function Home() {
           const newBet = {
               id: Math.random().toString(36).substring(7),
               matchId: matchInfo.id,
-              matchName: `${matchInfo.home} vs ${matchInfo.away}`,
+              matchName: `${matchInfo.homeOriginal || matchInfo.home} vs ${matchInfo.awayOriginal || matchInfo.away}`,
               outcome: outcome,
               amount: betAmountNum,
               odds: lockedOdds || 1.0,

@@ -19,7 +19,6 @@ export async function fetchLiveMatches(
     const cacheBuster = Date.now();
     const res = await fetch(`/api/matches?lang=${encodeURIComponent(lang)}&_=${cacheBuster}`, {
       cache: 'no-store',
-      keepalive: true,
       signal: options?.signal,
       headers: {
         'Accept-Language': lang,

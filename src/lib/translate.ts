@@ -3,9 +3,10 @@ const path = require('path');
 
 const TRANSLATIONS_CACHE_PATH = path.join(process.cwd(), 'data', 'team_translations.json');
 
-type SupportedLang = 'zh-TW' | 'zh-CN' | 'es' | 'ar' | 'fr' | 'ru' | 'de' | 'ja' | 'ko' | 'pt' | 'th';
+export type SupportedLang = 'en' | 'zh-TW' | 'zh-CN' | 'es' | 'ar' | 'fr' | 'ru' | 'de' | 'ja' | 'ko' | 'pt' | 'th';
 
 const GOOGLE_TL_MAP: Record<SupportedLang, string> = {
+  'en': 'en',
   'zh-TW': 'zh-TW',
   'zh-CN': 'zh-CN',
   'es': 'es',
@@ -117,11 +118,52 @@ export async function translateTeamName(text: string, targetLang: SupportedLang)
 }
 
 export const SUPPORTED_TRANSLATION_LANGS: SupportedLang[] = [
-  'zh-TW', 'zh-CN', 'es', 'ar', 'fr', 'ru', 'de', 'ja', 'ko', 'pt', 'th'
+  'en', 'zh-TW', 'zh-CN', 'es', 'ar', 'fr', 'ru', 'de', 'ja', 'ko', 'pt', 'th'
 ];
 
 export function isSupportedTranslationLang(lang: string): lang is SupportedLang {
   return SUPPORTED_TRANSLATION_LANGS.includes(lang as SupportedLang);
+}
+
+// ── Client-side translation (no fs dependency, cache in memory) ──
+
+const clientCache: Record<string, string> = {};
+const clientPending = new Map<string, Promise<string>>();
+
+export async function clientTranslate(text: string, targetLang: SupportedLang): Promise<string> {
+  if (!text) return text;
+  if (targetLang === 'en') return text;
+
+  const cacheKey = `${text}$${targetLang}`;
+  if (clientCache[cacheKey]) return clientCache[cacheKey];
+
+  const existing = clientPending.get(cacheKey);
+  if (existing) return existing;
+
+  const promise = (async () => {
+    try {
+      const tl = GOOGLE_TL_MAP[targetLang];
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${tl}&dt=t&q=${encodeURIComponent(text)}`;
+      const res = await fetch(url);
+      if (!res.ok) return text;
+      const data = await res.json();
+      let translated = '';
+      if (Array.isArray(data) && data[0]) {
+        translated = data[0].map((item: any) => item[0] || '').join('');
+      }
+      translated = translated.trim();
+      if (!translated || translated === text) return text;
+      clientCache[cacheKey] = translated;
+      return translated;
+    } catch {
+      return text;
+    } finally {
+      clientPending.delete(cacheKey);
+    }
+  })();
+
+  clientPending.set(cacheKey, promise);
+  return promise;
 }
 
 // ── Backward-compatible wrappers ──

@@ -8,7 +8,7 @@ export interface MatchPools {
 export interface Match {
   id: number;
   league: string;
-  category: 'elite' | 'asian' | 'european' | 'americas' | 'women';
+  category: 'elite' | 'asian' | 'european' | 'americas' | 'women' | 'worldcup' | 'others' | 'asia' | 'europe' | 'england';
   home: string;
   away: string;
   homeOriginal?: string;

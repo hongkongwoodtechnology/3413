@@ -1962,6 +1962,7 @@ export async function GET(request: NextRequest) {
 
       if (leagueMatch) {
         category = leagueMatch.category;
+        if (isWCQualifier) category = 'worldcup';
         if (leagueMatch.names && (leagueMatch.names as any)[lang]) {
           let mapped = (lang === 'zh-TW' || lang === 'zh-CN') ? sanitizeZh((leagueMatch.names as any)[lang], lang) : (leagueMatch.names as any)[lang];
           if (lang === 'zh-CN') {
@@ -2404,7 +2405,7 @@ export async function GET(request: NextRequest) {
         } catch {}
     }
 
-    return NextResponse.json(applyWorldCupSeedFallback(validMatches));
+    return NextResponse.json(applyWorldCupSeedFallback(validMatches, lang));
 
   } catch (error) {
     console.error('Error fetching livescore data:', error);

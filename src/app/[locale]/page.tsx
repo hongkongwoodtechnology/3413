@@ -33,6 +33,7 @@ import { getReturnRateForBetMode } from "@/lib/bet-mode"
 import { countActiveOutcomes } from "@/lib/market-rules"
 import { getProjectedPoolIncrement } from "@/lib/bet-preview"
 import { TEAM_NAMES, LEAGUES } from "@/lib/dictionaries"
+import { clientTranslate, isSupportedTranslationLang, type SupportedLang } from "@/lib/translate"
 import { useHomeMatchesData, type MatchWithMarketData } from "@/hooks/useHomeMatchesData"
 import { useReferralLandingGate } from "@/hooks/useReferralLandingGate"
 import { fetchLiveMatches } from "@/lib/api"
@@ -337,6 +338,7 @@ export default function Home() {
   const [currentMatchPage, setCurrentMatchPage] = useState(0)
   const MATCHES_PER_PAGE = 8
   const [betsRefreshKey, setBetsRefreshKey] = useState(0)
+  const [teamTransCache, setTeamTransCache] = useState<Record<string, string>>({})
 
   // 檢查是否使用體驗金投注
   const [useBonus, setUseBonus] = useState(false);
@@ -1056,7 +1058,7 @@ export default function Home() {
           const newBet = {
               id: Math.random().toString(36).substring(7),
               matchId: matchInfo.id,
-              matchName: `${matchInfo.home} vs ${matchInfo.away}`,
+              matchName: `${matchInfo.homeOriginal || matchInfo.home} vs ${matchInfo.awayOriginal || matchInfo.away}`,
               outcome: outcome,
               amount: betAmountNum,
               odds: lockedOdds || 1.0,
@@ -1271,6 +1273,34 @@ export default function Home() {
     }
     return groups;
   }, [filteredMyBets]);
+
+  useEffect(() => {
+    if (language === 'en') return;
+    const tl = language as SupportedLang;
+    const namesToTranslate = new Set<string>();
+    for (const group of matchGroups) {
+      const parts = (group.matchName || '').split(' vs ');
+      for (const part of parts) {
+        const trimmed = part.trim();
+        if (trimmed && !TEAM_NAMES[trimmed]?.[language] && !teamTransCache[trimmed]) {
+          namesToTranslate.add(trimmed);
+        }
+      }
+    }
+    if (namesToTranslate.size === 0) return;
+    let cancelled = false;
+    (async () => {
+      const newCache = { ...teamTransCache };
+      for (const name of namesToTranslate) {
+        if (cancelled) return;
+        const translated = await clientTranslate(name, tl);
+        if (cancelled) return;
+        newCache[name] = translated;
+      }
+      if (!cancelled) setTeamTransCache(newCache);
+    })();
+    return () => { cancelled = true; };
+  }, [matchGroups, language]);
 
   const isTrialFundsFirstBetBlocked = useMemo(() => {
     if (!useBonus || !currentMatch) return false;
@@ -2131,13 +2161,14 @@ export default function Home() {
                             const getTeamTrans = (orig: string) => {
                                 const exact = TEAM_NAMES[orig]?.[language];
                                 if (exact) return exact;
+                                if (teamTransCache[orig]) return teamTransCache[orig];
                                 const lowerOrig = orig.toLowerCase();
                                 for (const [key, translations] of Object.entries(TEAM_NAMES)) {
                                     if (lowerOrig.includes(key.toLowerCase()) && (translations as any)[language]) {
                                         return (translations as any)[language];
                                     }
                                 }
-                                return orig;
+                                return teamTransCache[orig] || orig;
                             };
                             displayMatchName = `${getTeamTrans(parts[0])} vs ${getTeamTrans(parts[1])}`;
                         }

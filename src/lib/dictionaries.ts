@@ -99,12 +99,65 @@ export const TEAM_NAMES: Record<string, Record<string, string>> = {
         "en": "Paris Saint-Germain"
     },
     
+    // World Cup 2026 Teams
+    "Mexico": {
+        "zh-TW": "墨西哥",
+        "zh-CN": "墨西哥",
+        "en": "Mexico"
+    },
+    "Japan": {
+        "zh-TW": "日本",
+        "zh-CN": "日本",
+        "en": "Japan"
+    },
+    "Spain": {
+        "zh-TW": "西班牙",
+        "zh-CN": "西班牙",
+        "en": "Spain"
+    },
+    "Morocco": {
+        "zh-TW": "摩洛哥",
+        "zh-CN": "摩洛哥",
+        "en": "Morocco"
+    },
+    "Brazil": {
+        "zh-TW": "巴西",
+        "zh-CN": "巴西",
+        "en": "Brazil"
+    },
+    "Serbia": {
+        "zh-TW": "塞爾維亞",
+        "zh-CN": "塞尔维亚",
+        "en": "Serbia"
+    },
+    "France": {
+        "zh-TW": "法國",
+        "zh-CN": "法国",
+        "en": "France"
+    },
+    "Canada": {
+        "zh-TW": "加拿大",
+        "zh-CN": "加拿大",
+        "en": "Canada"
+    },
+
     // Default or Fallback
     "Default": {
         "zh-TW": "未知球隊",
         "zh-CN": "未知球队",
         "en": "Unknown Team"
     }
+};
+
+export const COUNTRY_CODES: Record<string, string> = {
+    "Mexico": "mx",
+    "Japan": "jp",
+    "Spain": "es",
+    "Morocco": "ma",
+    "Brazil": "br",
+    "Serbia": "rs",
+    "France": "fr",
+    "Canada": "ca",
 };
 
 export const LEAGUES = [
@@ -174,6 +227,7 @@ export const LEAGUES = [
     {
         name: "FIFA World Cup",
         aliases: ["World Cup"],
+        category: "worldcup",
         names: {
             "zh-TW": "國際足總世界盃",
             "zh-CN": "国际足联世界杯",
