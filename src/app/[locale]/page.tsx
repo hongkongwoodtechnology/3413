@@ -1906,33 +1906,44 @@ export default function Home() {
                         <CardContent className="pt-6 space-y-6">
                           {/* Odds Selection */}
                           <div className="grid grid-cols-3 gap-2">
-                            {Object.entries(matchOdds).map(([outcome, odd]) => {
-                              const isSelected = selectedMatchId === match.id && selectedOutcome === outcome;
-                              return (
-                                <button
-                                  key={outcome}
-                                  onClick={() => {
-                                    if (isSelected) {
-                                      setSelectedMatchId(null);
-                                      setSelectedOutcome(null);
-                                    } else {
-                                      setSelectedMatchId(match.id);
-                                      setSelectedOutcome(outcome);
-                                      setAmount(""); // Reset amount on new selection
-                                    }
-                                  }}
-                                  className={`
-                                    flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 relative overflow-hidden
-                                    ${isSelected 
-                                      ? "bg-primary-purple/20 border-primary-purple text-primary-purple shadow-[0_0_15px_-5px_rgba(153,69,255,0.4)]" 
-                                      : "bg-neutral-900/50 border-neutral-700 text-neutral-400 hover:border-neutral-500 hover:bg-neutral-800 hover:text-neutral-200"}
-                                  `}
-                                >
-                                  <span className="text-[10px] font-bold uppercase tracking-wider opacity-70 mb-1">{t(`outcome.${outcome}`)}</span>
-                                  <span className="text-lg font-bold">{isNaN(odd) ? '-' : odd}</span>
-                                </button>
-                              );
-                            })}
+                            {(() => {
+                              const stat = bettingStatsMap.get(String(match.id));
+                              return Object.entries(matchOdds).map(([outcome, odd]) => {
+                                const isSelected = selectedMatchId === match.id && selectedOutcome === outcome;
+                                const amt = stat ? (outcome === 'home' ? stat.homeAmount : outcome === 'draw' ? stat.drawAmount : stat.awayAmount) : 0;
+                                return (
+                                  <button
+                                    key={outcome}
+                                    onClick={() => {
+                                      if (isSelected) {
+                                        setSelectedMatchId(null);
+                                        setSelectedOutcome(null);
+                                      } else {
+                                        setSelectedMatchId(match.id);
+                                        setSelectedOutcome(outcome);
+                                        setAmount("");
+                                      }
+                                    }}
+                                    className={`
+                                      flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 relative overflow-hidden
+                                      ${isSelected 
+                                        ? "bg-primary-purple/20 border-primary-purple text-primary-purple shadow-[0_0_15px_-5px_rgba(153,69,255,0.4)]" 
+                                        : "bg-neutral-900/50 border-neutral-700 text-neutral-400 hover:border-neutral-500 hover:bg-neutral-800 hover:text-neutral-200"}
+                                    `}
+                                  >
+                                    <span className="text-[10px] font-bold uppercase tracking-wider opacity-70 mb-1">{t(`outcome.${outcome}`)}</span>
+                                    <span className="text-lg font-bold">{isNaN(odd) ? '-' : odd}</span>
+                                    {isAdmin && stat && (
+                                      <span className={`text-[10px] font-mono tabular-nums mt-0.5 ${
+                                        outcome === 'home' ? 'text-green-400' : outcome === 'draw' ? 'text-blue-400' : 'text-orange-400'
+                                      }`}>
+                                        {amt.toFixed(2)}
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              });
+                            })()}
                           </div>
 
                           {/* Admin: 即時投注額顯示 */}
