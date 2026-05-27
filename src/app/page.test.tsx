@@ -419,7 +419,7 @@ describe("Home referral landing", () => {
       expect(screen.getByText("Alpha FC")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getAllByRole("button", { name: /^2$/ })[0]);
+    fireEvent.click(screen.getByRole("button", { name: /outcome\.draw/ }));
     fireEvent.change(screen.getByPlaceholderText("0.00"), {
       target: { value: "4" },
     });
@@ -477,9 +477,9 @@ describe("Home referral landing", () => {
     });
 
     const buttonTexts = screen.getAllByRole("button").map((button) => button.textContent);
-    expect(buttonTexts).toContain("outcome.home1.5");
-    expect(buttonTexts).toContain("outcome.draw2.5");
-    expect(buttonTexts).toContain("outcome.away3.5");
+    expect(buttonTexts).toContain("outcome.home2.87");
+    expect(buttonTexts).toContain("outcome.draw2");
+    expect(buttonTexts).toContain("outcome.away1.5");
   });
 
   it("updates all outcome buttons immediately for trial funds on a non-zero pool", async () => {
