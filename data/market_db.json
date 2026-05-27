@@ -372,6 +372,24 @@
     "finalScore": "2-1",
     "adminSurplus": 0.009
   },
+  "1777763": {
+    "realTotalPool": 0.3,
+    "liabilities": {
+      "home": 0,
+      "draw": 0,
+      "away": 0.86415
+    },
+    "pools": {
+      "home": 0,
+      "draw": 0,
+      "away": 0.3
+    },
+    "attractionWindowUsed": {
+      "home": 0,
+      "draw": 0,
+      "away": 0
+    }
+  },
   "1780620": {
     "realTotalPool": 0.03,
     "liabilities": {

@@ -332,6 +332,20 @@
   ],
   "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg": [
     {
+      "id": "bet-1779898153500-5k98a",
+      "userAddress": "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg",
+      "matchId": "1777763",
+      "matchName": "Ararat Armenia vs Gandzasar",
+      "outcome": "away",
+      "amount": 0.3,
+      "odds": 2.8805,
+      "netPayout": 0.86415,
+      "signature": "hU3zsYox37iboy8Q6YNru5aGeQYVcFdR8QxnsmX9nR5axhPRYFKR4ZRRDyfeQJuxoMt7aMVc3rLSHEskGn8Qsab",
+      "status": "pending",
+      "useBonus": false,
+      "timestamp": 1779898141026
+    },
+    {
       "id": "bet-1779894096196-kwsoe",
       "userAddress": "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg",
       "matchId": "1780620",

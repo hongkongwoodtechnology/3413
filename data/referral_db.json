@@ -455,6 +455,16 @@
     },
     "commissions": [
       {
+        "id": "comm-1779898170295-p09o4o",
+        "referee": "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg",
+        "betAmount": "0.300000",
+        "fee": "0.024000",
+        "commission": "0.007200",
+        "timestamp": "2026-05-27T16:09:30.295Z",
+        "status": "pending",
+        "signature": "hU3zsYox37iboy8Q6YNru5aGeQYVcFdR8QxnsmX9nR5axhPRYFKR4ZRRDyfeQJuxoMt7aMVc3rLSHEskGn8Qsab"
+      },
+      {
         "id": "comm-1779894117106-ju2t2r",
         "referee": "FcusPDXQ4RwGAZvYJ48QLTDBH7Z4RZ2j45PYfEtWZvMg",
         "betAmount": "0.030000",
