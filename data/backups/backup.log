@@ -485,3 +485,12 @@
   ZIP saved: C:\Users\USER\OneDrive\Documents\GAMBLE_backups\GAMBLE_2026-05-27_0418.zip (1665.7 KB)
   Removed old: GAMBLE_2026-05-26_2126.zip
 === SUCCESS ===
+=== Backup 2026-05-27_0526 ===
+[1/3] Git add + commit ...
+  Committed: [main e619ec7] chore: daily backup 2026-05-27_0526  2 files changed, 59 insertions(+)  create mode 100644 fix-deploy.js
+[2/3] Git push ...
+  Pushed to GitHub.
+[3/3] OneDrive ZIP backup ...
+  ZIP saved: C:\Users\USER\OneDrive\Documents\GAMBLE_backups\GAMBLE_2026-05-27_0526.zip (1666.7 KB)
+  Removed old: GAMBLE_2026-05-26_2340.zip
+=== SUCCESS ===
