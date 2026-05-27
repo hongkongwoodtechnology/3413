@@ -5,7 +5,7 @@ import {
   ConnectionProvider,
   WalletProvider,
 } from "@solana/wallet-adapter-react"
-import { WalletModalProvider, WalletModal } from "@solana/wallet-adapter-react-ui"
+import { WalletModalProvider } from "@solana/wallet-adapter-react-ui"
 import { WalletError } from "@solana/wallet-adapter-base"
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom"
 import { SolflareWalletAdapter } from "@solana/wallet-adapter-solflare"
@@ -37,10 +37,7 @@ export const WalletContextProvider: FC<{ children: ReactNode }> = ({
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect={false} onError={onError}>
-        <WalletModalProvider>
-          {children}
-          <WalletModal />
-        </WalletModalProvider>
+        <WalletModalProvider>{children}</WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
   )
