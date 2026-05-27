@@ -781,10 +781,24 @@ export default function Home() {
         away: 0,
       };
       if (md.realTotalPool === 0) {
-        return {
-          odds: md.initialOdds[selectedOutcome as keyof typeof md.initialOdds],
-          riskLevel: 'refund_single_side',
+        const seedBase = {
+          home: md.seedPools?.home ?? md.pools.home ?? 0,
+          draw: md.seedPools?.draw ?? md.pools.draw ?? 0,
+          away: md.seedPools?.away ?? md.pools.away ?? 0,
         };
+        const quote = oddsEngine.calculatePhaseAwareLockedOdds({
+            pools: seedBase,
+            liabilities: md.liabilities,
+            selectedOutcome: selectedOutcome as 'home' | 'draw' | 'away',
+            betAmount: effectiveBetAmountForQuote,
+            initialOdds: md.initialOdds,
+            attractionWindowUsed,
+            score: currentMatch.score,
+            liveMinute: currentMatch.liveMinute,
+            status: currentMatch.status,
+            returnRate: effectiveReturnRate,
+        });
+        return quote ? { odds: quote.odds, riskLevel: quote.riskLevel } : { odds: md.initialOdds[selectedOutcome as keyof typeof md.initialOdds], riskLevel: 'refund_single_side' };
       }
       const quote = oddsEngine.calculatePhaseAwareLockedOdds({
           pools: md.pools,
@@ -1681,7 +1695,26 @@ export default function Home() {
                                     currentRealPool: md.realTotalPool,
                                 });
                                 if (md.realTotalPool === 0) {
-                                    matchOdds = { home: md.initialOdds.home, draw: md.initialOdds.draw, away: md.initialOdds.away };
+                                    if (projectedIncrement > 0) {
+                                        const seedBase = {
+                                            home: md.seedPools?.home ?? md.pools.home ?? 0,
+                                            draw: md.seedPools?.draw ?? md.pools.draw ?? 0,
+                                            away: md.seedPools?.away ?? md.pools.away ?? 0,
+                                        };
+                                        seedBase[selectedOutcome as keyof typeof seedBase] += projectedIncrement;
+                                        const result = oddsEngine.calculatePhaseAwareDisplayOdds({
+                                            pools: seedBase,
+                                            initialOdds: md.initialOdds,
+                                            attractionWindowUsed,
+                                            score: match.score,
+                                            liveMinute: match.liveMinute,
+                                            status: match.status,
+                                            returnRate: effectiveReturnRate,
+                                        });
+                                        matchOdds = { home: result.home, draw: result.draw, away: result.away };
+                                    } else {
+                                        matchOdds = { home: md.initialOdds.home, draw: md.initialOdds.draw, away: md.initialOdds.away };
+                                    }
                                 } else if (projectedIncrement > 0) {
                                     const projectedPools = {
                                         home: md.pools.home || 0,

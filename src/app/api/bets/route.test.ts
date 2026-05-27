@@ -785,4 +785,69 @@ describe('bets POST', () => {
       expect(savedReferralDb['real-user'].balances.bonus).toBe(30);
     }
   });
+
+  it('serializes concurrent bets on the same match so the second bet sees the first bet pool', async () => {
+    mockDatabases({
+      marketDb: {
+        '202': {
+          realTotalPool: 0,
+          liabilities: { home: 0, draw: 0, away: 0 },
+          pools: { home: 0, draw: 0, away: 0 },
+          initialOdds: { home: 2.31, draw: 5.17, away: 3.05 },
+        },
+      },
+    });
+
+    const bet1 = new Request('http://localhost/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: 'user-concurrent-1',
+        matchId: 202,
+        matchName: 'A vs B',
+        outcome: 'home',
+        amount: 0.03,
+        odds: 2.31,
+        useBonus: false,
+        timestamp: Date.now(),
+        liveMinute: 12,
+      }),
+    });
+
+    const bet2 = new Request('http://localhost/api/bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userAddress: 'user-concurrent-2',
+        matchId: 202,
+        matchName: 'A vs B',
+        outcome: 'away',
+        amount: 0.03,
+        odds: 3.05,
+        useBonus: false,
+        timestamp: Date.now(),
+        liveMinute: 12,
+      }),
+    });
+
+    const [res1, res2] = await Promise.all([POST(bet1), POST(bet2)]);
+    const json1 = await res1.json();
+    const json2 = await res2.json();
+
+    expect(res1.status).toBe(200);
+    expect(res2.status).toBe(200);
+    expect(json1.success).toBe(true);
+    expect(json2.success).toBe(true);
+
+    const writeCalls = (fs.writeFileSync as jest.Mock).mock.calls;
+    const marketWrites = writeCalls.filter(([filePath]) =>
+      String(filePath).includes('market_db.json')
+    );
+    const lastMarketWrite = marketWrites[marketWrites.length - 1];
+    const savedMarketDb = JSON.parse(String(lastMarketWrite?.[1] || '{}'));
+
+    expect(savedMarketDb['202'].pools.home).toBeCloseTo(0.03, 4);
+    expect(savedMarketDb['202'].pools.away).toBeCloseTo(0.03, 4);
+    expect(savedMarketDb['202'].realTotalPool).toBeCloseTo(0.06, 4);
+  });
 });

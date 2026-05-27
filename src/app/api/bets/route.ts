@@ -9,6 +9,15 @@ import { addToReserve, loadReserve } from '@/lib/reserve';
 import { DynamicOddsEngine } from '@/lib/odds-engine';
 import { countActiveOutcomes, splitBetByAttractionWindow } from '@/lib/market-rules';
 import { clampLockedOdds } from '@/lib/locked-odds';
+import { withMatchLock } from '@/lib/mutex';
+
+class MarketValidationError extends Error {
+  response: NextResponse;
+  constructor(response: NextResponse) {
+    super('Market validation failed');
+    this.response = response;
+  }
+}
 
 // 檔案式資料庫路徑
 const DB_FILE_PATH = path.join(process.cwd(), 'data', 'bets_db.json');
@@ -215,129 +224,6 @@ export async function POST(request: Request) {
         );
         const netPayout = getNetPayoutFromLockedOdds(amount, lockedOdds, !!useBonus);
 
-        const marketDb = loadMarketDb();
-        const key = String(matchId);
-
-        if (isMarketClosedForBetting(marketDb[key])) {
-            return NextResponse.json({ error: '賽事已結束，無法投注。' }, { status: 403 });
-        }
-
-        const currentMarket: MarketDataInfo = marketDb[key] || {
-            realTotalPool: 0,
-            liabilities: { home: 0, draw: 0, away: 0 },
-            pools: { home: 0, draw: 0, away: 0 },
-            attractionWindowUsed: { home: 0, draw: 0, away: 0 },
-        };
-
-        const currentRealTotal = currentMarket.realTotalPool || 0;
-        const currentPools = currentMarket.pools || { home: 0, draw: 0, away: 0 };
-        currentMarket.attractionWindowUsed ||= { home: 0, draw: 0, away: 0 };
-        const currentTotalReal = currentPools.home + currentPools.draw + currentPools.away;
-        const isFeeFundedCold = currentTotalReal < 0.50;
-
-        if (useBonus && currentRealTotal <= 0) {
-            return NextResponse.json(
-                {
-                    error: '體驗金不可作為該場賭池首注，請等待真實資金先建立賭池。',
-                    code: 'risk_trial_funds_first_bet_blocked',
-                },
-                { status: 403 }
-            );
-        }
-
-        if (useBonus) {
-            const trialFundsUsed = getTrialFundsUsageForMatch(db, matchId);
-            const trialFundsCap = Number((currentRealTotal * TRIAL_FUNDS_CAP_RATIO).toFixed(6));
-            const trialFundsRemaining = Math.max(
-                0,
-                Number((trialFundsCap - trialFundsUsed).toFixed(6))
-            );
-
-            if (amount > trialFundsRemaining + FLOAT_PRECISION_EPSILON) {
-                return NextResponse.json(
-                    {
-                        error: `體驗金超出單場上限，目前最多還可使用 ${trialFundsRemaining.toFixed(4)} USDT。`,
-                        code: 'risk_trial_funds_cap',
-                        trialFundsCap,
-                        trialFundsUsed,
-                        trialFundsRemaining,
-                    },
-                    { status: 403 }
-                );
-            }
-        }
-
-        const options: Array<'home' | 'draw' | 'away'> = ['home', 'draw', 'away'];
-        const opponentPoolBefore = options
-            .filter(o => o !== outcomeKey)
-            .reduce((sum, o) => sum + (currentPools[o] || 0), 0);
-        const isSingleSidePool = currentPools[outcomeKey] > 0 && opponentPoolBefore === 0;
-        const activeOutcomeCount = countActiveOutcomes(currentPools);
-        const isInitialOddsPhase = activeOutcomeCount === 0 || (activeOutcomeCount === 1 && (currentPools[outcomeKey] || 0) > 0);
-
-        if (isInitialOddsPhase) {
-            const expectedInitialOdds = currentMarket.initialOdds?.[outcomeKey];
-            if (typeof expectedInitialOdds === 'number') {
-                if (Math.abs(lockedOdds - expectedInitialOdds) > 1e-6) {
-                    return NextResponse.json({ error: '單邊首注賠率異常。' }, { status: 403 });
-                }
-            } else if (lockedOdds < 1.01) {
-                return NextResponse.json({ error: '單邊首注賠率異常。' }, { status: 403 });
-            }
-        } else if (!isFeeFundedCold) {
-            if (lockedOdds < 1.01) {
-                return NextResponse.json({ error: '賠率異常。' }, { status: 403 });
-            }
-            const projectedGross = currentRealTotal + amount;
-            const projectedLiabilityFit = (currentMarket.liabilities[outcomeKey] || 0) + (amount * lockedOdds);
-            if (projectedLiabilityFit > projectedGross * (1 - PLATFORM_FEE_RATE) + 1e-9) {
-                return NextResponse.json(
-                    { error: '投注被拒絕：對手盤資金不足，可能導致無法派彩。' },
-                    { status: 403 }
-                );
-            }
-        } else {
-            const projectedLiability = (currentMarket.liabilities[outcomeKey] || 0) + (amount * lockedOdds);
-            const realPoolFunds = currentRealTotal + amount * (1 - PLATFORM_FEE_RATE);
-            const reserve = loadReserve().balance;
-            if (projectedLiability > realPoolFunds + reserve + 1e-9) {
-                return NextResponse.json(
-                    { error: '投注被拒絕：儲備池不足，無法保證償付。' },
-                    { status: 403 }
-                );
-            }
-        }
-
-        const currentOptionPool = currentPools[outcomeKey] || 0;
-        const newTotalPool = currentTotalReal + amount;
-        const newOptionConcentration = (currentOptionPool + amount) / (newTotalPool || 1);
-        const MAX_POSITION_RATIO = 0.85;
-        const COLD_START_CAP = 0.50;
-        const isColdStart = currentTotalReal < COLD_START_CAP;
-        if (!isColdStart && newTotalPool > 0 && newOptionConcentration > MAX_POSITION_RATIO && !isInitialOddsPhase) {
-            return NextResponse.json(
-                { error: `投注被拒絕：該選項已達到持倉上限 (${(MAX_POSITION_RATIO * 100).toFixed(0)}%)，請等待更多資金注入其他選項。` },
-                { status: 403 }
-            );
-        }
-
-        if (!isInitialOddsPhase && currentTotalReal > 0 && !isFeeFundedCold) {
-            const engine = new DynamicOddsEngine();
-            const xMax = engine.getMaxBetAmount(currentPools, outcomeKey);
-            if (xMax <= 0) {
-                return NextResponse.json(
-                    { error: '投注被拒絕：該選項資金池已達賠付上限，請選擇其他選項。' },
-                    { status: 403 }
-                );
-            }
-            if (amount > xMax) {
-                return NextResponse.json(
-                    { error: `投注金額超出上限，此選項最大可投注 ${xMax.toFixed(4)} USDT（超過將使賠率低於 1.01）。` },
-                    { status: 403 }
-                );
-            }
-        }
-
         const newBet: BetRecord = {
             id: `bet-${Date.now()}-${Math.random().toString(36).substring(7)}`,
             userAddress,
@@ -353,33 +239,165 @@ export async function POST(request: Request) {
             timestamp: timestamp || Date.now()
         };
 
+        try {
+            await withMatchLock(matchId, async () => {
+                const marketDb = loadMarketDb();
+                const key = String(matchId);
+
+                if (isMarketClosedForBetting(marketDb[key])) {
+                    throw new MarketValidationError(NextResponse.json({ error: '賽事已結束，無法投注。' }, { status: 403 }));
+                }
+
+                const currentMarket: MarketDataInfo = marketDb[key] || {
+                    realTotalPool: 0,
+                    liabilities: { home: 0, draw: 0, away: 0 },
+                    pools: { home: 0, draw: 0, away: 0 },
+                    attractionWindowUsed: { home: 0, draw: 0, away: 0 },
+                };
+
+                const currentRealTotal = currentMarket.realTotalPool || 0;
+                const currentPools = currentMarket.pools || { home: 0, draw: 0, away: 0 };
+                currentMarket.attractionWindowUsed ||= { home: 0, draw: 0, away: 0 };
+                const currentTotalReal = currentPools.home + currentPools.draw + currentPools.away;
+                const isFeeFundedCold = currentTotalReal < 0.50;
+
+                if (useBonus && currentRealTotal <= 0) {
+                    throw new MarketValidationError(NextResponse.json(
+                        {
+                            error: '體驗金不可作為該場賭池首注，請等待真實資金先建立賭池。',
+                            code: 'risk_trial_funds_first_bet_blocked',
+                        },
+                        { status: 403 }
+                    ));
+                }
+
+                if (useBonus) {
+                    const trialFundsUsed = getTrialFundsUsageForMatch(db, matchId);
+                    const trialFundsCap = Number((currentRealTotal * TRIAL_FUNDS_CAP_RATIO).toFixed(6));
+                    const trialFundsRemaining = Math.max(
+                        0,
+                        Number((trialFundsCap - trialFundsUsed).toFixed(6))
+                    );
+
+                    if (amount > trialFundsRemaining + FLOAT_PRECISION_EPSILON) {
+                        throw new MarketValidationError(NextResponse.json(
+                            {
+                                error: `體驗金超出單場上限，目前最多還可使用 ${trialFundsRemaining.toFixed(4)} USDT。`,
+                                code: 'risk_trial_funds_cap',
+                                trialFundsCap,
+                                trialFundsUsed,
+                                trialFundsRemaining,
+                            },
+                            { status: 403 }
+                        ));
+                    }
+                }
+
+                const options: Array<'home' | 'draw' | 'away'> = ['home', 'draw', 'away'];
+                const opponentPoolBefore = options
+                    .filter(o => o !== outcomeKey)
+                    .reduce((sum, o) => sum + (currentPools[o] || 0), 0);
+                const isSingleSidePool = currentPools[outcomeKey] > 0 && opponentPoolBefore === 0;
+                const activeOutcomeCount = countActiveOutcomes(currentPools);
+                const isInitialOddsPhase = activeOutcomeCount === 0 || (activeOutcomeCount === 1 && (currentPools[outcomeKey] || 0) > 0);
+
+                if (isInitialOddsPhase) {
+                    const expectedInitialOdds = currentMarket.initialOdds?.[outcomeKey];
+                    if (typeof expectedInitialOdds === 'number') {
+                        if (Math.abs(lockedOdds - expectedInitialOdds) > 1e-6) {
+                            throw new MarketValidationError(NextResponse.json({ error: '單邊首注賠率異常。' }, { status: 403 }));
+                        }
+                    } else if (lockedOdds < 1.01) {
+                        throw new MarketValidationError(NextResponse.json({ error: '單邊首注賠率異常。' }, { status: 403 }));
+                    }
+                } else if (!isFeeFundedCold) {
+                    if (lockedOdds < 1.01) {
+                        throw new MarketValidationError(NextResponse.json({ error: '賠率異常。' }, { status: 403 }));
+                    }
+                    const projectedGross = currentRealTotal + amount;
+                    const projectedLiabilityFit = (currentMarket.liabilities[outcomeKey] || 0) + (amount * lockedOdds);
+                    if (projectedLiabilityFit > projectedGross * (1 - PLATFORM_FEE_RATE) + 1e-9) {
+                        throw new MarketValidationError(NextResponse.json(
+                            { error: '投注被拒絕：對手盤資金不足，可能導致無法派彩。' },
+                            { status: 403 }
+                        ));
+                    }
+                } else {
+                    const projectedLiability = (currentMarket.liabilities[outcomeKey] || 0) + (amount * lockedOdds);
+                    const realPoolFunds = currentRealTotal + amount * (1 - PLATFORM_FEE_RATE);
+                    const reserve = loadReserve().balance;
+                    if (projectedLiability > realPoolFunds + reserve + 1e-9) {
+                        throw new MarketValidationError(NextResponse.json(
+                            { error: '投注被拒絕：儲備池不足，無法保證償付。' },
+                            { status: 403 }
+                        ));
+                    }
+                }
+
+                const currentOptionPool = currentPools[outcomeKey] || 0;
+                const newTotalPool = currentTotalReal + amount;
+                const newOptionConcentration = (currentOptionPool + amount) / (newTotalPool || 1);
+                const MAX_POSITION_RATIO = 0.85;
+                const COLD_START_CAP = 0.50;
+                const isColdStart = currentTotalReal < COLD_START_CAP;
+                if (!isColdStart && newTotalPool > 0 && newOptionConcentration > MAX_POSITION_RATIO && !isInitialOddsPhase) {
+                    throw new MarketValidationError(NextResponse.json(
+                        { error: `投注被拒絕：該選項已達到持倉上限 (${(MAX_POSITION_RATIO * 100).toFixed(0)}%)，請等待更多資金注入其他選項。` },
+                        { status: 403 }
+                    ));
+                }
+
+                if (!isInitialOddsPhase && currentTotalReal > 0 && !isFeeFundedCold) {
+                    const engine = new DynamicOddsEngine();
+                    const xMax = engine.getMaxBetAmount(currentPools, outcomeKey);
+                    if (xMax <= 0) {
+                        throw new MarketValidationError(NextResponse.json(
+                            { error: '投注被拒絕：該選項資金池已達賠付上限，請選擇其他選項。' },
+                            { status: 403 }
+                        ));
+                    }
+                    if (amount > xMax) {
+                        throw new MarketValidationError(NextResponse.json(
+                            { error: `投注金額超出上限，此選項最大可投注 ${xMax.toFixed(4)} USDT（超過將使賠率低於 1.01）。` },
+                            { status: 403 }
+                        ));
+                    }
+                }
+
+                if (!currentMarket.pools) {
+                    currentMarket.pools = { home: 0, draw: 0, away: 0 };
+                }
+
+                if (!isInitialOddsPhase) {
+                    const split = splitBetByAttractionWindow(
+                        amount,
+                        currentMarket.attractionWindowUsed,
+                        outcomeKey
+                    );
+                    currentMarket.attractionWindowUsed[outcomeKey] =
+                        (currentMarket.attractionWindowUsed[outcomeKey] || 0) + split.attractiveAmount;
+                }
+
+                currentMarket.realTotalPool = (currentMarket.realTotalPool || 0) + amount;
+                currentMarket.liabilities[outcomeKey] = (currentMarket.liabilities?.[outcomeKey] || 0) + (amount * lockedOdds);
+                currentMarket.pools[outcomeKey] = (currentMarket.pools?.[outcomeKey] || 0) + amount;
+
+                marketDb[key] = currentMarket;
+                saveMarketDb(marketDb);
+            });
+        } catch (e) {
+            if (e instanceof MarketValidationError) {
+                return e.response;
+            }
+            throw e;
+        }
+
         db[userAddress].unshift(newBet);
         saveDatabase(db);
 
         if (useBonus) {
             deductBonusBalance(userAddress, amount);
         }
-
-        if (!currentMarket.pools) {
-            currentMarket.pools = { home: 0, draw: 0, away: 0 };
-        }
-
-        if (!isInitialOddsPhase) {
-            const split = splitBetByAttractionWindow(
-                amount,
-                currentMarket.attractionWindowUsed,
-                outcomeKey
-            );
-            currentMarket.attractionWindowUsed[outcomeKey] =
-                (currentMarket.attractionWindowUsed[outcomeKey] || 0) + split.attractiveAmount;
-        }
-
-        currentMarket.realTotalPool = (currentMarket.realTotalPool || 0) + amount;
-        currentMarket.liabilities[outcomeKey] = (currentMarket.liabilities?.[outcomeKey] || 0) + (amount * lockedOdds);
-        currentMarket.pools[outcomeKey] = (currentMarket.pools?.[outcomeKey] || 0) + amount;
-
-        marketDb[key] = currentMarket;
-        saveMarketDb(marketDb);
 
         const platformFee = amount * PLATFORM_FEE_RATE;
         addToReserve(platformFee * 0.5);

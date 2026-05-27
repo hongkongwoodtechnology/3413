@@ -449,7 +449,7 @@ describe("[locale] Home referral landing", () => {
       expect(screen.getByText("Alpha FC")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getAllByRole("button", { name: /2\.5/ })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /^2$/ })[0]);
     fireEvent.change(screen.getByPlaceholderText("0.00"), {
       target: { value: "4" },
     });
@@ -493,7 +493,7 @@ describe("[locale] Home referral landing", () => {
     mockedConnected = true;
     mockedPublicKey = { toBase58: () => "wallet-111" };
     mockedSplitBetAmount.mockReturnValue({ pool: 3.68, house: 0.16, commission: 0.16, support: 0 });
-    (fetchLiveMatches as jest.Mock).mockResolvedValue(ZERO_POOL_MATCH_FIXTURE);
+    (fetchLiveMatches as jest.Mock).mockResolvedValue(MATCH_FIXTURE);
     (getUSDTBalance as jest.Mock).mockResolvedValue(100);
     window.history.replaceState({}, "", "/zh-TW");
 

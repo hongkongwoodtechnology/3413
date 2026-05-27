@@ -617,6 +617,8 @@ const LEAGUES = [
  'ru': 'Суперлига Молдовы', 'fr': 'Super Liga Moldave', 'de': 'Moldauische Super Liga', 'ar': 'دوري السوبر المولدوفي' } },
 
   // Scotland
+  { key: 'arm.1', name: 'Premier League', country: 'Armenia', category: 'europe', names: { 'zh-TW': '亞美尼亞超級聯賽', 'zh-CN': '亚美尼亚超级联赛', 'es': 'Liga Premier de Armenia', 'ja': 'アルメニア・プレミアリーグ', 'ko': '아르메니아 프리미어리그', 'pt': 'Premier League da Armênia',
+ 'ru': 'Премьер-лига Армении', 'fr': 'Premier League d\'Arménie', 'de': 'Armenische Premier League', 'ar': 'الدوري الأرمني الممتاز' } },
   { key: 'sco.1', name: 'Premiership', country: 'Scotland', category: 'europe', names: { 'zh-TW': '蘇格蘭超級聯賽', 'zh-CN': '苏格兰超级联赛', 'es': 'Premiership', 'ja': 'スコティッシュ・プレミアシップ', 'ko': '프리미어십', 'pt': 'Premiership Escocesa',
  'ru': 'Премьершип', 'fr': 'Premiership Écossaise', 'de': 'Scottish Premiership', 'ar': 'الدوري الاسكتلندي الممتاز' } },
 
@@ -638,6 +640,8 @@ const LEAGUES = [
   { key: 'rsa.premier', name: 'Premier League', country: 'South Africa', category: 'africa', names: { 'ar': 'الدوري الجنوب أفريقي الممتاز' } },
 
   // Libya
+  { key: 'ken.1', name: 'Premier League', country: 'Kenya', category: 'africa', names: { 'zh-TW': '肯亞超級聯賽', 'zh-CN': '肯尼亚超级联赛', 'es': 'Liga Premier de Kenia', 'ja': 'ケニア・プレミアリーグ', 'ko': '케냐 프리미어리그', 'pt': 'Premier League do Quênia',
+ 'ru': 'Премьер-лига Кении', 'fr': 'Premier League du Kenya', 'de': 'Kenianische Premier League', 'ar': 'الدوري الكيني الممتاز' } },
   { key: 'lby.1', name: 'Premier League', country: 'Libya', category: 'africa', names: { 'zh-TW': '利比亞超級聯賽', 'zh-CN': '利比亚超级联赛', 'es': 'Liga Premier de Libia', 'ja': 'リビア・プレミアリーグ', 'ko': '프리미어리그', 'pt': 'Premier League da Líbia',
  'ru': 'Премьер-лига Ливии', 'fr': 'Premier League Libyenne', 'de': 'Libysche Premier League', 'ar': 'الدوري الليبي الممتاز' } },
 
@@ -653,6 +657,8 @@ const LEAGUES = [
   { key: 'jpn.3', name: 'J3 League', country: 'Japan', category: 'asia', names: { 'zh-TW': '日丙', 'zh-CN': '日丙', 'es': 'J3 League', 'ar': 'الدوري الياباني الدرجة الثالثة' } },
   { key: 'jpn.100', name: 'J.League 100 Year Vision', country: 'Japan', category: 'asia', names: { 'zh-TW': '百年構想聯賽', 'zh-CN': '百年构想联赛', 'es': 'J.League 100', 'ar': 'دوري رؤية 100 عام' } },
   { key: 'aus.cup', name: 'Australia Cup', country: 'Australia', category: 'asia', names: { 'zh-TW': '澳洲盃', 'zh-CN': '澳大利亚杯', 'es': 'Copa de Australia', 'ar': 'كأس أستراليا' }, aliases: ['Cup', 'Australia Cup'] },
+  { key: 'kaz.1', name: 'Premier League', country: 'Kazakhstan', category: 'asia', names: { 'zh-TW': '哈薩克超級聯賽', 'zh-CN': '哈萨克斯坦超级联赛', 'es': 'Liga Premier de Kazajistán', 'ja': 'カザフスタン・プレミアリーグ', 'ko': '카자흐스탄 프리미어리그', 'pt': 'Premier League do Cazaquistão',
+ 'ru': 'Премьер-лига Казахстана', 'fr': 'Premier League du Kazakhstan', 'de': 'Kasachische Premier League', 'ar': 'الدوري الكازاخستاني الممتاز' } },
   { key: 'ind.1', name: 'I-League', country: 'India', category: 'asia', names: { 'ar': 'الدوري الهندي' }, aliases: ['Championship Group', 'Relegation Group'] },
 
   // 美洲賽事
@@ -2246,9 +2252,11 @@ export async function GET(request: NextRequest) {
         
         // 條件 2: 嚴格白名單過濾 (確保只顯示指定的聯賽)
         // 世界盃與其外圍賽一律允許
+        // 使用 leagueOriginal (原始英文聯賽名) 與 l.name (英文原名) 比對，
+        // 避免翻譯後的聯賽名因語系差異導致匹配結果不一致。
+        const matchLeagueOriginal = (match.leagueOriginal || match.league).toLowerCase();
         const isWhiteListed = match.category === 'worldcup' || LEAGUES.some(l => {
-            const translatedName = (l.names as any)[lang];
-            return match.league.includes(l.name) || (translatedName && match.league.includes(translatedName));
+            return matchLeagueOriginal.includes(l.name.toLowerCase());
         });
 
         if (!isWhiteListed) {
