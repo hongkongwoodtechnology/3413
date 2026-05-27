@@ -337,6 +337,7 @@ export default function Home() {
   const [timeFilter, setTimeFilter] = useState<'live' | '1day' | '3days' | '7days' | 'all'>('all')
   const [currentMatchPage, setCurrentMatchPage] = useState(0)
   const MATCHES_PER_PAGE = 8
+  const BETS_PER_PAGE = 5
   const [betsRefreshKey, setBetsRefreshKey] = useState(0)
   const [teamTransCache, setTeamTransCache] = useState<Record<string, string>>({})
 
@@ -1274,6 +1275,14 @@ export default function Home() {
     return groups;
   }, [filteredMyBets]);
 
+  const totalBetPages = Math.max(1, Math.ceil(matchGroups.length / BETS_PER_PAGE));
+  const currentPageMatchGroups = useMemo(() => {
+    return matchGroups.slice(
+      currentBetPage * BETS_PER_PAGE,
+      (currentBetPage + 1) * BETS_PER_PAGE
+    );
+  }, [matchGroups, currentBetPage]);
+
   useEffect(() => {
     if (language === 'en') return;
     const tl = language as SupportedLang;
@@ -2145,98 +2154,93 @@ export default function Home() {
                         </div>
                     </div>
                 ) : (
-                    (() => {
-                        const group = matchGroups[currentBetPage];
-                        if (!group || !group.bets || group.bets.length === 0) {
-                          return (
-                            <div className="bg-neutral-800/30 border border-neutral-800 rounded-3xl overflow-hidden backdrop-blur-sm">
-                              <div className="p-8 text-center text-neutral-500 text-sm">{t('status.no_matches') || 'No bets'}</div>
-                            </div>
-                          );
-                        }
-                        const matchName = group?.matchName || `Match #${group?.bets?.[0]?.matchId || '?'}`;
-                        const parts = matchName.split(' vs ');
-                        let displayMatchName = matchName;
-                        if (parts.length === 2) {
-                            const getTeamTrans = (orig: string) => {
-                                const exact = TEAM_NAMES[orig]?.[language];
-                                if (exact) return exact;
-                                if (teamTransCache[orig]) return teamTransCache[orig];
-                                const lowerOrig = orig.toLowerCase();
-                                for (const [key, translations] of Object.entries(TEAM_NAMES)) {
-                                    if (lowerOrig.includes(key.toLowerCase()) && (translations as any)[language]) {
-                                        return (translations as any)[language];
+                    <div className="space-y-4">
+                        {currentPageMatchGroups.map((group) => {
+                            const matchName = group?.matchName || `Match #${group?.bets?.[0]?.matchId || '?'}`;
+                            const parts = matchName.split(' vs ');
+                            let displayMatchName = matchName;
+                            if (parts.length === 2) {
+                                const getTeamTrans = (orig: string) => {
+                                    const exact = TEAM_NAMES[orig]?.[language];
+                                    if (exact) return exact;
+                                    if (teamTransCache[orig]) return teamTransCache[orig];
+                                    const lowerOrig = orig.toLowerCase();
+                                    for (const [key, translations] of Object.entries(TEAM_NAMES)) {
+                                        if (lowerOrig.includes(key.toLowerCase()) && (translations as any)[language]) {
+                                            return (translations as any)[language];
+                                        }
                                     }
-                                }
-                                return teamTransCache[orig] || orig;
-                            };
-                            displayMatchName = `${getTeamTrans(parts[0])} vs ${getTeamTrans(parts[1])}`;
-                        }
-                        const groupTotal = group.bets.reduce((sum, b) => sum + b.amount, 0);
-                        return (
-                            <div className="bg-neutral-800/30 border border-neutral-800 rounded-3xl overflow-hidden backdrop-blur-sm">
-                                <div className="px-4 py-3 border-b border-neutral-800 bg-neutral-900/50 flex items-center justify-between">
-                                    <span className="text-sm font-bold text-white truncate">{displayMatchName}</span>
-                                    <span className="text-xs text-neutral-500">
-                                        {group.bets.length} {language === 'zh-TW' ? '筆' : language === 'zh-CN' ? '笔' : 'bets'} · {t('bets.amount')}: {groupTotal.toFixed(4)} USDT
-                                    </span>
-                                </div>
-                                <div className="grid grid-cols-4 text-xs font-bold text-neutral-500 uppercase tracking-wider p-3 border-b border-neutral-800/50 bg-neutral-900/30">
-                                    <div>{t('bets.outcome')}</div>
-                                    <div className="text-right">{t('bets.amount')}</div>
-                                    <div className="text-right">{t('bets.odds')}</div>
-                                    <div className="text-right">{t('bets.status.win')}/{t('bets.status.loss')}</div>
-                                </div>
-                                <div className="divide-y divide-neutral-800/50 max-h-[400px] overflow-y-auto">
-                                    {group.bets.map((bet) => (
-                                        <div key={bet.id} className="grid grid-cols-4 gap-4 p-3 items-center hover:bg-neutral-800/50 transition-colors text-sm">
-                                            <div className="uppercase font-bold text-primary-purple">
-                                                {t(`outcome.${bet.outcome}`)}
-                                            </div>
-                                            <div className="text-right font-mono font-bold text-white">
-                                                {typeof bet.amount === 'number' ? bet.amount.toFixed(4) : '0.0000'}
-                                                {bet.useBonus && <span className="ml-1 text-[10px] text-orange-400 font-sans">{t('bets.trial')}</span>}
-                                            </div>
-                                            <div className="text-right font-mono text-primary-blue font-bold">
-                                                {bet.odds ? bet.odds.toFixed(4) : '-'}
-                                            </div>
-                                            <div className="text-right">
-                                                <span className={`text-[10px] px-1.5 py-0.5 rounded-md inline-block font-bold ${
-                                                    bet.status === 'win' ? 'bg-success/20 text-success' :
-                                                    bet.status === 'loss' ? 'bg-error/20 text-error' :
-                                                    bet.status === 'refunded' ? 'bg-neutral-700 text-neutral-300' :
-                                                    'bg-warning/20 text-warning'
-                                                }`}>
-                                                    {bet.status === 'win' ? t('bets.status.win') : bet.status === 'loss' ? t('bets.status.loss') : bet.status === 'refunded' ? t('bets.status.refunded') : t('bets.status.pending')}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                                {matchGroups.length > 1 && (
-                                    <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-800 bg-neutral-900/30">
-                                        <button
-                                            onClick={() => setCurrentBetPage(p => Math.max(0, p - 1))}
-                                            disabled={currentBetPage === 0}
-                                            className="text-xs px-3 py-1.5 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                                        >
-                                            ← {language === 'zh-TW' ? '上一場' : language === 'zh-CN' ? '上一场' : 'Prev'}
-                                        </button>
-                                        <span className="text-xs text-neutral-500">
-                                            {currentBetPage + 1} / {matchGroups.length}
+                                    return teamTransCache[orig] || orig;
+                                };
+                                displayMatchName = `${getTeamTrans(parts[0])} vs ${getTeamTrans(parts[1])}`;
+                            }
+                            const groupTotal = group.bets.reduce((sum, b) => sum + b.amount, 0);
+                            const betUnit = language === 'zh-TW' ? '筆' : language === 'zh-CN' ? '笔' : 'bets';
+                            return (
+                                <div key={group.matchName} className="bg-neutral-800/30 border border-neutral-800 rounded-3xl overflow-hidden backdrop-blur-sm">
+                                    <div className="px-4 py-3 border-b border-neutral-800 bg-neutral-900/50 flex items-center justify-between">
+                                        <span className="text-sm font-bold text-white truncate">{displayMatchName}</span>
+                                        <span className="text-xs text-neutral-500 shrink-0 ml-2">
+                                            {group.bets.length} {betUnit} · {t('bets.amount')}: {groupTotal.toFixed(4)} USDT
                                         </span>
-                                        <button
-                                            onClick={() => setCurrentBetPage(p => Math.min(matchGroups.length - 1, p + 1))}
-                                            disabled={currentBetPage >= matchGroups.length - 1}
-                                            className="text-xs px-3 py-1.5 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                                        >
-                                            {language === 'zh-TW' ? '下一場' : language === 'zh-CN' ? '下一场' : 'Next'} →
-                                        </button>
                                     </div>
-                                )}
+                                    <div className="grid grid-cols-4 text-xs font-bold text-neutral-500 uppercase tracking-wider p-3 border-b border-neutral-800/50 bg-neutral-900/30">
+                                        <div>{t('bets.outcome')}</div>
+                                        <div className="text-right">{t('bets.amount')}</div>
+                                        <div className="text-right">{t('bets.odds')}</div>
+                                        <div className="text-right">{t('bets.status.win')}/{t('bets.status.loss')}</div>
+                                    </div>
+                                    <div className="divide-y divide-neutral-800/50">
+                                        {group.bets.map((bet) => (
+                                            <div key={bet.id} className="grid grid-cols-4 gap-4 p-3 items-center hover:bg-neutral-800/50 transition-colors text-sm">
+                                                <div className="uppercase font-bold text-primary-purple">
+                                                    {t(`outcome.${bet.outcome}`)}
+                                                </div>
+                                                <div className="text-right font-mono font-bold text-white">
+                                                    {typeof bet.amount === 'number' ? bet.amount.toFixed(4) : '0.0000'}
+                                                    {bet.useBonus && <span className="ml-1 text-[10px] text-orange-400 font-sans">{t('bets.trial')}</span>}
+                                                </div>
+                                                <div className="text-right font-mono text-primary-blue font-bold">
+                                                    {bet.odds ? bet.odds.toFixed(4) : '-'}
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md inline-block font-bold ${
+                                                        bet.status === 'win' ? 'bg-success/20 text-success' :
+                                                        bet.status === 'loss' ? 'bg-error/20 text-error' :
+                                                        bet.status === 'refunded' ? 'bg-neutral-700 text-neutral-300' :
+                                                        'bg-warning/20 text-warning'
+                                                    }`}>
+                                                        {bet.status === 'win' ? t('bets.status.win') : bet.status === 'loss' ? t('bets.status.loss') : bet.status === 'refunded' ? t('bets.status.refunded') : t('bets.status.pending')}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {matchGroups.length > BETS_PER_PAGE && (
+                            <div className="flex items-center justify-between px-4 py-3 rounded-2xl bg-neutral-800/30 border border-neutral-800">
+                                <button
+                                    onClick={() => setCurrentBetPage(p => Math.max(0, p - 1))}
+                                    disabled={currentBetPage === 0}
+                                    className="text-xs px-3 py-1.5 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                    ← {t('pagination.prev')}
+                                </button>
+                                <span className="text-xs text-neutral-500">
+                                    {t('pagination.page_of').replace('{current}', String(currentBetPage + 1)).replace('{total}', String(totalBetPages))}
+                                </span>
+                                <button
+                                    onClick={() => setCurrentBetPage(p => Math.min(totalBetPages - 1, p + 1))}
+                                    disabled={currentBetPage >= totalBetPages - 1}
+                                    className="text-xs px-3 py-1.5 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                    {t('pagination.next')} →
+                                </button>
                             </div>
-                        );
-                    })()
+                        )}
+                    </div>
                 )}
              </div>
           )}
