@@ -388,7 +388,12 @@
       "home": 0,
       "draw": 0,
       "away": 0
-    }
+    },
+    "refundProcessed": true,
+    "adminSurplus": 0,
+    "settled": true,
+    "finalWinner": "home",
+    "finalScore": "1-0"
   },
   "1780620": {
     "realTotalPool": 0.03,
@@ -408,6 +413,9 @@
       "away": 0
     },
     "refundProcessed": true,
-    "adminSurplus": 0
+    "adminSurplus": 0,
+    "settled": true,
+    "finalWinner": "home",
+    "finalScore": "1-0"
   }
 }

@@ -1,4 +1,6 @@
 
+import fs from 'fs';
+import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
 import { loadMarketDb, saveMarketDb } from '@/lib/marketDb';
 import { PLATFORM_FEE_RATE } from '@/lib/wallets';
@@ -1741,13 +1743,36 @@ const COUNTRY_NAMES: Record<string, Record<string, string>> = {
 };
 
 // We use LiveScore API to ensure we get actual real-world data without mock matches
-// Global cache for LiveScore API responses
-let liveScoreCache: {
-  timestamp: number;
-  liveData: any;
-  dateDataList: any[];
-} | null = null;
+// File-based cache so ALL browsers/instances see identical match data
+const LIVE_SCORE_CACHE_PATH = path.join(process.cwd(), 'data', 'livescore_cache.json');
 const CACHE_TTL = 30000; // 30 seconds
+
+function ensureDataDir() {
+  const dataDir = path.dirname(LIVE_SCORE_CACHE_PATH);
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+}
+
+function loadLiveScoreCache(): { timestamp: number; liveData: any; dateDataList: any[] } | null {
+  try {
+    ensureDataDir();
+    if (!fs.existsSync(LIVE_SCORE_CACHE_PATH)) return null;
+    const raw = fs.readFileSync(LIVE_SCORE_CACHE_PATH, 'utf-8');
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function saveLiveScoreCache(data: { timestamp: number; liveData: any; dateDataList: any[] }) {
+  try {
+    ensureDataDir();
+    fs.writeFileSync(LIVE_SCORE_CACHE_PATH, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (error) {
+    console.error('Failed to save LiveScore cache:', error);
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -1770,9 +1795,10 @@ export async function GET(request: NextRequest) {
     let liveData, dateDataList;
     const now = Date.now();
 
-    if (liveScoreCache && now - liveScoreCache.timestamp < CACHE_TTL) {
-        liveData = liveScoreCache.liveData;
-        dateDataList = liveScoreCache.dateDataList;
+    const cached = loadLiveScoreCache();
+    if (cached && now - cached.timestamp < CACHE_TTL) {
+        liveData = cached.liveData;
+        dateDataList = cached.dateDataList;
     } else {
         const fetchWithTimeout = async (url: string, ms = 15000) => {
           const controller = new AbortController();
@@ -1809,11 +1835,11 @@ export async function GET(request: NextRequest) {
         liveData = responses[0].ok ? await responses[0].json() : { Stages: [] };
         dateDataList = await Promise.all(responses.slice(1).map(async r => r.ok ? await r.json() : { Stages: [] }));
         
-        liveScoreCache = {
+        saveLiveScoreCache({
             timestamp: now,
             liveData,
             dateDataList
-        };
+        });
     }
     
     // Merge Stages, ensuring live matches are included and avoiding duplicates
