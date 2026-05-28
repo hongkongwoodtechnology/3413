@@ -1676,8 +1676,6 @@ export default function Home() {
                    
                    <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2">
                        {matches.map((match) => {
-                        const isFocused = selectedMatchId === match.id && betAmountNum > 0;
-
                         let matchOdds = { home: 1.01, draw: 1.01, away: 1.01 };
 
                         if (match.marketData) {
@@ -1687,64 +1685,7 @@ export default function Home() {
                                 draw: 0,
                                 away: 0,
                             };
-                            if (isFocused && selectedOutcome) {
-                                const projectedIncrement = getProjectedPoolIncrement({
-                                    amount: betAmountNum,
-                                    useBonus,
-                                    commissionRate: effectiveCommissionRate,
-                                    currentRealPool: md.realTotalPool,
-                                });
-                                if (md.realTotalPool === 0) {
-                                    if (projectedIncrement > 0) {
-                                        const seedBase = {
-                                            home: md.seedPools?.home ?? md.pools.home ?? 0,
-                                            draw: md.seedPools?.draw ?? md.pools.draw ?? 0,
-                                            away: md.seedPools?.away ?? md.pools.away ?? 0,
-                                        };
-                                        seedBase[selectedOutcome as keyof typeof seedBase] += projectedIncrement;
-                                        const result = oddsEngine.calculatePhaseAwareDisplayOdds({
-                                            pools: seedBase,
-                                            initialOdds: md.initialOdds,
-                                            attractionWindowUsed,
-                                            score: match.score,
-                                            liveMinute: match.liveMinute,
-                                            status: match.status,
-                                            returnRate: effectiveReturnRate,
-                                        });
-                                        matchOdds = { home: result.home, draw: result.draw, away: result.away };
-                                    } else {
-                                        matchOdds = { home: md.initialOdds.home, draw: md.initialOdds.draw, away: md.initialOdds.away };
-                                    }
-                                } else if (projectedIncrement > 0) {
-                                    const projectedPools = {
-                                        home: md.pools.home || 0,
-                                        draw: md.pools.draw || 0,
-                                        away: md.pools.away || 0,
-                                    };
-                                    projectedPools[selectedOutcome as keyof typeof projectedPools] += projectedIncrement;
-                                    const result = oddsEngine.calculatePhaseAwareDisplayOdds({
-                                        pools: projectedPools,
-                                        initialOdds: md.initialOdds,
-                                        attractionWindowUsed,
-                                        score: match.score,
-                                        liveMinute: match.liveMinute,
-                                        status: match.status,
-                                        returnRate: effectiveReturnRate,
-                                    });
-                                    matchOdds = { home: result.home, draw: result.draw, away: result.away };
-                                } else {
-                                    const result = oddsEngine.calculatePhaseAwareDisplayOdds({
-                                        pools: md.pools,
-                                        initialOdds: md.initialOdds,
-                                        attractionWindowUsed,
-                                        score: match.score,
-                                        liveMinute: match.liveMinute,
-                                        status: match.status,
-                                        returnRate: effectiveReturnRate,
-                                    });
-                                    matchOdds = { home: result.home, draw: result.draw, away: result.away };
-                                }
-                            } else if (md.realTotalPool === 0) {
+                            if (md.realTotalPool === 0) {
                                 matchOdds = { home: md.initialOdds.home, draw: md.initialOdds.draw, away: md.initialOdds.away };
                             } else {
                                 const result = oddsEngine.calculatePhaseAwareDisplayOdds({
@@ -1760,38 +1701,10 @@ export default function Home() {
                             }
                         } else {
                             const pools = { home: match.pools.home, draw: match.pools.draw, away: match.pools.away };
-                            if (isFocused && selectedOutcome) {
-                                const totalReal = pools.home + pools.draw + pools.away;
-                                const projectedIncrement = getProjectedPoolIncrement({
-                                    amount: betAmountNum,
-                                    useBonus,
-                                    commissionRate: effectiveCommissionRate,
-                                    currentRealPool: totalReal,
-                                });
-                                if (totalReal === 0) {
-                                    matchOdds = { home: 1.01, draw: 1.01, away: 1.01 };
-                                } else if (projectedIncrement > 0) {
-                                    const projectedPools = { ...pools };
-                                    projectedPools[selectedOutcome as keyof typeof projectedPools] += projectedIncrement;
-                                    const result = oddsEngine.calculateAllDisplayOdds(
-                                        projectedPools,
-                                        undefined,
-                                        undefined,
-                                        match.score,
-                                        match.liveMinute,
-                                        match.status,
-                                        effectiveReturnRate,
-                                        totalReal < oddsEngine.getFeeFundedThreshold() || undefined,
-                                        effectiveCommissionRate
-                                    );
-                                    matchOdds = { home: result.home, draw: result.draw, away: result.away };
-                                }
-                            } else {
-                                const result = oddsEngine.calculateAllDisplayOdds(
+                            const result = oddsEngine.calculateAllDisplayOdds(
                                     pools, undefined, undefined, match.score, match.liveMinute, match.status
                                 );
                                 matchOdds = { home: result.home, draw: result.draw, away: result.away };
-                            }
                         }
                         matchOdds = {
                             home: Math.min(matchOdds.home, MAX_LOCKED_ODDS),
