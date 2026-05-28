@@ -539,3 +539,12 @@
   ZIP saved: C:\Users\USER\OneDrive\Documents\GAMBLE_backups\GAMBLE_2026-05-28_0018.zip (1681.8 KB)
   Removed old: GAMBLE_2026-05-27_0400.zip
 === SUCCESS ===
+=== Backup 2026-05-28_0126 ===
+[1/3] Git add + commit ...
+  Committed: [main 5a42808] chore: daily backup 2026-05-28_0126  5 files changed, 13000 insertions(+), 14 deletions(-)  create mode 100644 data/livescore_cache.json
+[2/3] Git push ...
+  Pushed to GitHub.
+[3/3] OneDrive ZIP backup ...
+  ZIP saved: C:\Users\USER\OneDrive\Documents\GAMBLE_backups\GAMBLE_2026-05-28_0126.zip (1715.2 KB)
+  Removed old: GAMBLE_2026-05-27_0418.zip
+=== SUCCESS ===

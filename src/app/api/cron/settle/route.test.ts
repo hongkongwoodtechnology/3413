@@ -23,12 +23,14 @@ jest.mock("fs", () => ({
       const normalized = String(filePath).replace(/\\/g, "/");
       if (normalized.endsWith("/data/bets_db.json")) return mockFiles["bets_db.json"] ?? "{}";
       if (normalized.endsWith("/data/referral_db.json")) return mockFiles["referral_db.json"] ?? "{}";
+      if (normalized.endsWith("/data/market_db.json")) return mockFiles["market_db.json"] ?? "{}";
       return "{}";
     }),
     writeFileSync: jest.fn((filePath: string, data: string) => {
       const normalized = String(filePath).replace(/\\/g, "/");
       if (normalized.endsWith("/data/bets_db.json")) mockFiles["bets_db.json"] = data;
       if (normalized.endsWith("/data/referral_db.json")) mockFiles["referral_db.json"] = data;
+      if (normalized.endsWith("/data/market_db.json")) mockFiles["market_db.json"] = data;
     }),
   },
 }));
@@ -195,6 +197,7 @@ describe("cron settle payouts", () => {
         ],
       }),
       "referral_db.json": "{}",
+      "market_db.json": "{}",
     };
   });
 
@@ -206,6 +209,14 @@ describe("cron settle payouts", () => {
   });
 
   it("includes trial-funds winning bets in on-chain payout processing", async () => {
+    mockFiles["market_db.json"] = JSON.stringify({
+      "101": {
+        realTotalPool: 100,
+        liabilities: { home: 25, draw: 0, away: 0 },
+        pools: { home: 50, draw: 25, away: 25 },
+      },
+    });
+
     const { GET } = await import("./route");
     const responsePromise = GET(new Request("http://localhost/api/cron/settle", {
       headers: { "x-cron-secret": "test-cron-secret" },
@@ -241,6 +252,13 @@ describe("cron settle payouts", () => {
           paidOut: false,
         },
       ],
+    });
+    mockFiles["market_db.json"] = JSON.stringify({
+      "202": {
+        realTotalPool: 10,
+        liabilities: { home: 0, draw: 0, away: 0 },
+        pools: { home: 10, draw: 0, away: 0 },
+      },
     });
 
     const { GET } = await import("./route");
@@ -316,5 +334,203 @@ describe("cron settle payouts", () => {
 
     const savedReferralDb = JSON.parse(mockFiles["referral_db.json"]);
     expect(savedReferralDb.Referrer111.commissions[0].status).toBe("approved");
+  });
+
+  describe("single-match pool isolation", () => {
+    it("refunds-at-cost when a match pool is insufficient (instead of blocking)", async () => {
+      mockFiles["bets_db.json"] = JSON.stringify({
+        InsolventUser11111111111111111111111111111: [
+          {
+            id: "bet-match1-win",
+            userAddress: "InsolventUser11111111111111111111111111111",
+            matchId: 301,
+            matchName: "Team C vs Team D",
+            outcome: "away",
+            amount: 0.05,
+            odds: 2.99,
+            netPayout: 0.1495,
+            status: "win",
+            useBonus: false,
+            timestamp: 1234567890,
+            paidOut: false,
+          },
+        ],
+      });
+      mockFiles["market_db.json"] = JSON.stringify({
+        "301": {
+          realTotalPool: 0.08,
+          liabilities: { home: 0.0776, draw: 0, away: 0.1495 },
+          pools: { home: 0.03, draw: 0, away: 0.05 },
+        },
+      });
+
+      const { GET } = await import("./route");
+      const responsePromise = GET(new Request("http://localhost/api/cron/settle", {
+        headers: { "x-cron-secret": "test-cron-secret" },
+      }));
+      await jest.runAllTimersAsync();
+      const response = await responsePromise;
+      const json = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(json.success).toBe(true);
+      expect(json.wins).toBe(0);
+      expect(json.refunds).toBe(1);
+      expect(json.insolventRefundCount).toBe(1);
+      expect(json.insolventMatches).toHaveLength(1);
+      expect(json.insolventMatches[0].matchId).toBe("301");
+      expect(json.insolventMatches[0].realTotalPool).toBe(0.08);
+      expect(json.insolventMatches[0].shortfall).toBeCloseTo(0.0695, 4);
+    });
+
+    it("allows payout when all match pools are solvent", async () => {
+      mockFiles["bets_db.json"] = JSON.stringify({
+        SolventUser1111111111111111111111111111111: [
+          {
+            id: "bet-match1-win",
+            userAddress: "SolventUser1111111111111111111111111111111",
+            matchId: 401,
+            matchName: "Team E vs Team F",
+            outcome: "home",
+            amount: 0.03,
+            odds: 2.0,
+            netPayout: 0.06,
+            status: "win",
+            useBonus: false,
+            timestamp: 1234567890,
+            paidOut: false,
+          },
+        ],
+      });
+      mockFiles["market_db.json"] = JSON.stringify({
+        "401": {
+          realTotalPool: 0.10,
+          liabilities: { home: 0.06, draw: 0, away: 0 },
+          pools: { home: 0.05, draw: 0.03, away: 0.02 },
+        },
+      });
+
+      const { GET } = await import("./route");
+      const responsePromise = GET(new Request("http://localhost/api/cron/settle", {
+        headers: { "x-cron-secret": "test-cron-secret" },
+      }));
+      await jest.runAllTimersAsync();
+      const response = await responsePromise;
+      const json = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(json.success).toBe(true);
+      expect(json.wins).toBe(1);
+      expect(json.totalUsdtPaid).toBe(0.06);
+    });
+
+    it("pays solvent match normally and refunds-at-cost for insolvent one", async () => {
+      mockFiles["bets_db.json"] = JSON.stringify({
+        UserA111111111111111111111111111111111111: [
+          {
+            id: "bet-solvent",
+            userAddress: "UserA111111111111111111111111111111111111",
+            matchId: 501,
+            matchName: "Good Match",
+            outcome: "home",
+            amount: 1,
+            odds: 1.5,
+            netPayout: 1.5,
+            status: "win",
+            useBonus: false,
+            timestamp: 1234567890,
+            paidOut: false,
+          },
+        ],
+        UserB111111111111111111111111111111111111: [
+          {
+            id: "bet-insolvent",
+            userAddress: "UserB111111111111111111111111111111111111",
+            matchId: 502,
+            matchName: "Bad Match",
+            outcome: "away",
+            amount: 0.05,
+            odds: 2.99,
+            netPayout: 0.1495,
+            status: "win",
+            useBonus: false,
+            timestamp: 1234567890,
+            paidOut: false,
+          },
+        ],
+      });
+      mockFiles["market_db.json"] = JSON.stringify({
+        "501": {
+          realTotalPool: 10,
+          liabilities: { home: 1.5, draw: 0, away: 0 },
+          pools: { home: 5, draw: 3, away: 2 },
+        },
+        "502": {
+          realTotalPool: 0.08,
+          liabilities: { home: 0.0776, draw: 0, away: 0.1495 },
+          pools: { home: 0.03, draw: 0, away: 0.05 },
+        },
+      });
+
+      const { GET } = await import("./route");
+      const responsePromise = GET(new Request("http://localhost/api/cron/settle", {
+        headers: { "x-cron-secret": "test-cron-secret" },
+      }));
+      await jest.runAllTimersAsync();
+      const response = await responsePromise;
+      const json = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(json.success).toBe(true);
+      expect(json.wins).toBe(1);
+      expect(json.refunds).toBe(1);
+      expect(json.insolventRefundCount).toBe(1);
+      expect(json.insolventMatches).toHaveLength(1);
+      expect(json.insolventMatches[0].matchId).toBe("502");
+      expect(json.totalUsdtPaid).toBe(1.55);
+    });
+
+    it("bonus wins refund at cost when match pool is insolvent", async () => {
+      mockFiles["bets_db.json"] = JSON.stringify({
+        BonusUser11111111111111111111111111111111: [
+          {
+            id: "bet-bonus-win-insolvent",
+            userAddress: "BonusUser11111111111111111111111111111111",
+            matchId: 601,
+            matchName: "Trial Match",
+            outcome: "home",
+            amount: 20,
+            odds: 1.5,
+            netPayout: 30,
+            status: "win",
+            useBonus: true,
+            timestamp: 1234567890,
+            paidOut: false,
+          },
+        ],
+      });
+      mockFiles["market_db.json"] = JSON.stringify({
+        "601": {
+          realTotalPool: 0.01,
+          liabilities: { home: 0, draw: 0, away: 0 },
+          pools: { home: 0.01, draw: 0, away: 0 },
+        },
+      });
+
+      const { GET } = await import("./route");
+      const responsePromise = GET(new Request("http://localhost/api/cron/settle", {
+        headers: { "x-cron-secret": "test-cron-secret" },
+      }));
+      await jest.runAllTimersAsync();
+      const response = await responsePromise;
+      const json = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(json.success).toBe(true);
+      expect(json.wins).toBe(0);
+      expect(json.refunds).toBe(1);
+      expect(json.insolventRefundCount).toBe(1);
+      expect(json.totalUsdtPaid).toBe(20);
+    });
   });
 });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { requireAdminAuth } from "@/lib/security/auth";
+import { MarketDataInfo } from "@/lib/marketDb";
 
 interface BetRecord {
   id: string;
@@ -11,6 +12,7 @@ interface BetRecord {
   outcome: string;
   amount: number;
   odds?: number;
+  netPayout?: number;
   signature?: string | null;
   status?: string;
   useBonus: boolean;
@@ -33,6 +35,17 @@ interface PayoutEntry {
   type: "win" | "refund";
 }
 
+interface MatchSolvency {
+  matchId: string;
+  matchName: string;
+  realTotalPool: number;
+  totalNeeded: number;
+  solvent: boolean;
+  shortfall: number;
+  refundCount: number;
+  winCount: number;
+}
+
 function loadBetsDb(): Record<string, BetRecord[]> {
   const p = path.join(process.cwd(), "data", "bets_db.json");
   try {
@@ -47,14 +60,29 @@ function saveBetsDb(db: Record<string, BetRecord[]>) {
   fs.writeFileSync(path.join(dir, "bets_db.json"), JSON.stringify(db, null, 2), "utf-8");
 }
 
+function loadMarketDb(): Record<string, MarketDataInfo> {
+  const p = path.join(process.cwd(), "data", "market_db.json");
+  try {
+    if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, "utf-8"));
+  } catch {}
+  return {};
+}
+
 export async function GET() {
   try {
     const db = loadBetsDb();
+    const marketDb = loadMarketDb();
     const payouts: PayoutEntry[] = [];
+    const matchNeeded = new Map<string, { matchName: string; needed: number; refundCount: number; winCount: number }>();
 
     for (const [address, bets] of Object.entries(db)) {
       for (const bet of bets) {
-        if (bet.status === "win" && !bet.paidOut && !bet.useBonus && bet.amount > 0) {
+        if (bet.useBonus) continue;
+
+        if (bet.status === "win" && !bet.paidOut && bet.amount > 0) {
+          const netPayout = typeof bet.netPayout === "number"
+            ? bet.netPayout
+            : Math.round(bet.amount * (bet.odds || 1) * 1e6) / 1e6;
           payouts.push({
             userAddress: address,
             matchId: bet.matchId,
@@ -63,12 +91,18 @@ export async function GET() {
             outcome: bet.outcome,
             betAmount: bet.amount,
             odds: bet.odds || 1,
-            winAmount: Math.round(bet.amount * (bet.odds || 1) * 1e6) / 1e6,
+            winAmount: netPayout,
             paidOut: bet.paidOut || false,
             type: "win",
           });
+          const mid = String(bet.matchId);
+          if (!matchNeeded.has(mid)) {
+            matchNeeded.set(mid, { matchName: bet.matchName, needed: 0, refundCount: 0, winCount: 0 });
+          }
+          matchNeeded.get(mid)!.needed += netPayout;
+          matchNeeded.get(mid)!.winCount += 1;
         }
-        if (bet.status === "refunded" && !bet.paidOut && !bet.useBonus && bet.amount > 0) {
+        if (bet.status === "refunded" && !bet.paidOut && bet.amount > 0) {
           payouts.push({
             userAddress: address,
             matchId: bet.matchId,
@@ -81,17 +115,44 @@ export async function GET() {
             paidOut: bet.paidOut || false,
             type: "refund",
           });
+          const mid = String(bet.matchId);
+          if (!matchNeeded.has(mid)) {
+            matchNeeded.set(mid, { matchName: bet.matchName, needed: 0, refundCount: 0, winCount: 0 });
+          }
+          matchNeeded.get(mid)!.needed += bet.amount;
+          matchNeeded.get(mid)!.refundCount += 1;
         }
       }
     }
 
     const totalOwed = payouts.reduce((s, p) => s + p.winAmount, 0);
 
+    const solvencies: MatchSolvency[] = [];
+    for (const [matchId, info] of matchNeeded) {
+      const mkt = marketDb[matchId];
+      const realTotalPool = mkt?.realTotalPool ?? 0;
+      const solvent = info.needed <= realTotalPool + 1e-9;
+      solvencies.push({
+        matchId,
+        matchName: info.matchName,
+        realTotalPool: Math.round(realTotalPool * 1e6) / 1e6,
+        totalNeeded: Math.round(info.needed * 1e6) / 1e6,
+        solvent,
+        shortfall: solvent ? 0 : Math.round((info.needed - realTotalPool) * 1e6) / 1e6,
+        refundCount: info.refundCount,
+        winCount: info.winCount,
+      });
+    }
+
+    const allSolvent = solvencies.every(s => s.solvent);
+
     return NextResponse.json({
       success: true,
       payouts,
       totalOwed: Math.round(totalOwed * 1e6) / 1e6,
       count: payouts.length,
+      solvencies,
+      allSolvent,
     });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: String(e?.message ?? e) }, { status: 500 });

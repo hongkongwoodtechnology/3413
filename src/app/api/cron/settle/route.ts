@@ -5,6 +5,7 @@ import fs from "fs";
 import path from "path";
 import { getNetPayoutFromLockedOdds } from "@/lib/bet-mode";
 import { calculateReferralStats } from "@/lib/referral-stats";
+import { MarketDataInfo } from "@/lib/marketDb";
 
 function requireEnv(...keys: string[]): string {
   const value = keys
@@ -223,6 +224,19 @@ interface SplitEntry {
   rawAmount: bigint;
 }
 
+interface MatchSolvency {
+  matchId: string;
+  matchName: string;
+  realTotalPool: number;
+  totalNeeded: number;
+  solvent: boolean;
+  shortfall: number;
+  refundCount: number;
+  winCount: number;
+}
+
+const FLOAT_EPSILON = 1e-9;
+
 async function processSplits(
   adminKeypair: Keypair,
   adminAta: PublicKey,
@@ -274,6 +288,94 @@ async function processSplits(
   }
 
   return { success, failed, totalUsdt, errors };
+}
+
+function computeMatchSolvency(
+  betsDb: Record<string, BetRecord[]>,
+  marketDb: Record<string, MarketDataInfo>
+): {
+  solventMatches: Map<string, { refunds: SplitEntry[]; wins: SplitEntry[] }>;
+  insolventMatchGroups: Map<string, { refunds: SplitEntry[]; wins: SplitEntry[] }>;
+  insolventMatches: MatchSolvency[];
+  allSolvencies: MatchSolvency[];
+} {
+  const matchGroups = new Map<string, { refunds: SplitEntry[]; wins: SplitEntry[]; matchName: string }>();
+
+  for (const [, bets] of Object.entries(betsDb)) {
+    for (const bet of bets) {
+      if (bet.status === "refunded" && !bet.paidOut && bet.amount > 0) {
+        const mid = String(bet.matchId);
+        if (!matchGroups.has(mid)) {
+          matchGroups.set(mid, { refunds: [], wins: [], matchName: bet.matchName });
+        }
+        const rawAmt = BigInt(Math.floor(bet.amount * Math.pow(10, USDT_DECIMALS)));
+        matchGroups.get(mid)!.refunds.push({
+          userAddress: bet.userAddress,
+          betId: bet.id,
+          matchId: bet.matchId,
+          matchName: bet.matchName,
+          type: "refund",
+          amount: bet.amount,
+          rawAmount: rawAmt,
+        });
+      }
+
+      if (bet.status === "win" && !bet.paidOut && bet.amount > 0) {
+        const mid = String(bet.matchId);
+        if (!matchGroups.has(mid)) {
+          matchGroups.set(mid, { refunds: [], wins: [], matchName: bet.matchName });
+        }
+        const winAmount = typeof bet.netPayout === "number"
+          ? bet.netPayout
+          : getNetPayoutFromLockedOdds(bet.amount, bet.odds || 1, bet.useBonus);
+        const rawAmt = BigInt(Math.floor(winAmount * Math.pow(10, USDT_DECIMALS)));
+        matchGroups.get(mid)!.wins.push({
+          userAddress: bet.userAddress,
+          betId: bet.id,
+          matchId: bet.matchId,
+          matchName: bet.matchName,
+          type: "win",
+          amount: winAmount,
+          rawAmount: rawAmt,
+        });
+      }
+    }
+  }
+
+  const solventMatches = new Map<string, { refunds: SplitEntry[]; wins: SplitEntry[] }>();
+  const insolventMatchGroups = new Map<string, { refunds: SplitEntry[]; wins: SplitEntry[] }>();
+  const insolventMatches: MatchSolvency[] = [];
+  const allSolvencies: MatchSolvency[] = [];
+
+  for (const [matchId, group] of matchGroups) {
+    const mkt = marketDb[matchId];
+    const realTotalPool = mkt?.realTotalPool ?? 0;
+    const totalNeeded = group.refunds.reduce((s, r) => s + r.amount, 0)
+      + group.wins.reduce((s, w) => s + w.amount, 0);
+
+    const solvent = totalNeeded <= realTotalPool + FLOAT_EPSILON;
+
+    const solvency: MatchSolvency = {
+      matchId,
+      matchName: group.matchName,
+      realTotalPool: Math.round(realTotalPool * 1e6) / 1e6,
+      totalNeeded: Math.round(totalNeeded * 1e6) / 1e6,
+      solvent,
+      shortfall: solvent ? 0 : Math.round((totalNeeded - realTotalPool) * 1e6) / 1e6,
+      refundCount: group.refunds.length,
+      winCount: group.wins.length,
+    };
+    allSolvencies.push(solvency);
+
+    if (solvent) {
+      solventMatches.set(matchId, group);
+    } else {
+      insolventMatchGroups.set(matchId, group);
+      insolventMatches.push(solvency);
+    }
+  }
+
+  return { solventMatches, insolventMatchGroups, insolventMatches, allSolvencies };
 }
 
 export async function GET(request: Request) {
@@ -328,80 +430,59 @@ export async function GET(request: Request) {
     const adminAta = findAta(usdtMint, adminPubkey);
 
     const betsDb = loadDb("bets_db.json") as Record<string, BetRecord[]>;
+    const marketDb = loadDb("market_db.json") as Record<string, MarketDataInfo>;
 
-    // === 情況1：單邊投注 → 退還全額本金（不扣手續費） ===
-    const refunds: SplitEntry[] = [];
-    for (const [, bets] of Object.entries(betsDb)) {
-      for (const bet of bets) {
-        if (bet.status === "refunded" && !bet.paidOut && !bet.useBonus && bet.amount > 0) {
-          const rawAmt = BigInt(Math.floor(bet.amount * Math.pow(10, USDT_DECIMALS)));
-          refunds.push({
-            userAddress: bet.userAddress,
-            betId: bet.id,
-            matchId: bet.matchId,
-            matchName: bet.matchName,
-            type: "refund",
-            amount: bet.amount,
-            rawAmount: rawAmt,
-          });
-        }
+    const { solventMatches, insolventMatchGroups, insolventMatches, allSolvencies } = computeMatchSolvency(betsDb, marketDb);
+
+    logs.push(`=== 單場池 solvency 檢查 ===`);
+    for (const s of allSolvencies) {
+      const status = s.solvent ? "✅ 足夠" : "⚠️ 不足（將退還本金）";
+      logs.push(`  ${status} matchId=${s.matchId} "${s.matchName}" 池=${s.realTotalPool.toFixed(4)} 需付=${s.totalNeeded.toFixed(4)} 退款=${s.refundCount} 贏家=${s.winCount}`);
+    }
+
+    const allRefunds: SplitEntry[] = [];
+    const allWins: SplitEntry[] = [];
+    const insolventRefunds: SplitEntry[] = [];
+
+    for (const [, group] of solventMatches) {
+      allRefunds.push(...group.refunds);
+      allWins.push(...group.wins);
+    }
+
+    for (const [matchId, group] of insolventMatchGroups) {
+      allRefunds.push(...group.refunds);
+
+      for (const win of group.wins) {
+        const bet = Object.values(betsDb).flat().find(b => b.id === win.betId);
+        const refundAmount = bet?.amount ?? win.amount;
+        const rawRefund = BigInt(Math.floor(refundAmount * Math.pow(10, USDT_DECIMALS)));
+        insolventRefunds.push({
+          userAddress: win.userAddress,
+          betId: win.betId,
+          matchId: win.matchId,
+          matchName: win.matchName,
+          type: "refund",
+          amount: refundAmount,
+          rawAmount: rawRefund,
+        });
       }
     }
-    logs.push(`Case1 Refunds (單邊投注全額退回): ${refunds.length}`);
 
-    // === 情況2：多邊投注 → 贏家拿賠率倍數，剩餘歸管理員 ===
-    const wins: SplitEntry[] = [];
-    for (const [, bets] of Object.entries(betsDb)) {
-      for (const bet of bets) {
-        if (bet.status === "win" && !bet.paidOut && bet.amount > 0) {
-          const winAmount = typeof bet.netPayout === "number"
-            ? bet.netPayout
-            : getNetPayoutFromLockedOdds(bet.amount, bet.odds || 1, bet.useBonus);
-          const rawAmt = BigInt(Math.floor(winAmount * Math.pow(10, USDT_DECIMALS)));
-          wins.push({
-            userAddress: bet.userAddress,
-            betId: bet.id,
-            matchId: bet.matchId,
-            matchName: bet.matchName,
-            type: "win",
-            amount: winAmount,
-            rawAmount: rawAmt,
-          });
-        }
-      }
+    if (insolventRefunds.length > 0) {
+      const insolventSummary = insolventMatches.map(s =>
+        `  ${s.matchName}：池 ${s.realTotalPool.toFixed(4)} USDT 不足支付 ${s.totalNeeded.toFixed(4)}，${s.winCount} 筆贏家退還本金`
+      ).join('\n');
+      logs.push(`⚠️ 單場池不足：${insolventMatches.length} 場賽事贏家改為退還本金`);
+      logs.push(insolventSummary);
+      allRefunds.push(...insolventRefunds);
     }
-    logs.push(`Case2 Wins (贏家派彩): ${wins.length}`);
 
-    const allSplits = [...refunds, ...wins];
+    const allSplits = [...allRefunds, ...allWins];
 
+    logs.push(`Case1 Refunds (單邊投注全額退回): ${allRefunds.length - insolventRefunds.length}`);
+    logs.push(`Case2 Wins (贏家派彩): ${allWins.length}`);
+    logs.push(`Insolvent Refunds (池不足退本金): ${insolventRefunds.length}`);
     logs.push("Commissions (佣金): deferred to referral withdraw flow");
-
-    // === Admin ATA 餘額檢查 ===
-    const adminAtaBalance = await getTokenBalance(adminAta);
-    const totalNeededRaw = allSplits.reduce((sum, s) => sum + s.rawAmount, BigInt(0));
-    const grandTotalNeeded = totalNeededRaw;
-    const adminBalanceUi = Number(adminAtaBalance) / Math.pow(10, USDT_DECIMALS);
-    const totalNeededUi = Number(grandTotalNeeded) / Math.pow(10, USDT_DECIMALS);
-
-    logs.push(`Admin ATA balance: ${adminBalanceUi.toFixed(4)} USDT`);
-    logs.push(`Total needed: ${totalNeededUi.toFixed(4)} USDT (payouts only)`);
-
-    if (adminAtaBalance < grandTotalNeeded) {
-      const shortfall = (Number(grandTotalNeeded - adminAtaBalance) / Math.pow(10, USDT_DECIMALS)).toFixed(4);
-      return NextResponse.json({
-        success: false,
-        error: "Admin ATA 餘額不足",
-        balance: adminBalanceUi,
-        needed: totalNeededUi,
-        shortfall: Number(shortfall),
-        pendingRefunds: refunds.length,
-        pendingWins: wins.length,
-        pendingCommissions: 0,
-        message: `Admin ATA (${adminAta.toBase58()}) 只有 ${adminBalanceUi.toFixed(4)} USDT，但需支付 ${totalNeededUi.toFixed(4)} USDT。\n\n請確保所有投注資金已轉到 Admin ATA（舊投注在 Pool ATA 9FfHYyK... 的需手動轉移）。`,
-        elapsed: Date.now() - startTime,
-        logs,
-      }, { status: 402 });
-    }
 
     if (allSplits.length === 0) {
       return NextResponse.json({
@@ -410,11 +491,36 @@ export async function GET(request: Request) {
       });
     }
 
-    // === 處理派彩 + 退款 ===
+    const adminAtaBalance = await getTokenBalance(adminAta);
+    const totalNeededRaw = allSplits.reduce((sum, s) => sum + s.rawAmount, BigInt(0));
+    const adminBalanceUi = Number(adminAtaBalance) / Math.pow(10, USDT_DECIMALS);
+    const totalNeededUi = Number(totalNeededRaw) / Math.pow(10, USDT_DECIMALS);
+
+    logs.push(`Admin ATA balance: ${adminBalanceUi.toFixed(4)} USDT`);
+    logs.push(`Total needed: ${totalNeededUi.toFixed(4)} USDT (payouts only)`);
+
+    if (adminAtaBalance < totalNeededRaw) {
+      const shortfall = (Number(totalNeededRaw - adminAtaBalance) / Math.pow(10, USDT_DECIMALS)).toFixed(4);
+      return NextResponse.json({
+        success: false,
+        error: "Admin ATA 餘額不足",
+        balance: adminBalanceUi,
+        needed: totalNeededUi,
+        shortfall: Number(shortfall),
+        pendingRefunds: allRefunds.length,
+        pendingWins: allWins.length,
+        pendingCommissions: 0,
+        message: `Admin ATA (${adminAta.toBase58()}) 只有 ${adminBalanceUi.toFixed(4)} USDT，但需支付 ${totalNeededUi.toFixed(4)} USDT。\n\n請確保所有投注資金已轉到 Admin ATA（舊投注在 Pool ATA 9FfHYyK... 的需手動轉移）。`,
+        insolventMatches,
+        elapsed: Date.now() - startTime,
+        logs,
+      }, { status: 402 });
+    }
+
     const splitResult = await processSplits(adminKeypair, adminAta, adminPubkey, usdtMint, allSplits, betsDb);
-    const refundDone = refunds.filter(r => betsDb[r.userAddress]?.find(b => b.id === r.betId)?.paidOut).length;
-    const winDone = wins.filter(w => betsDb[w.userAddress]?.find(b => b.id === w.betId)?.paidOut).length;
-    logs.push(`Splits: refunds=${refundDone}/${refunds.length} wins=${winDone}/${wins.length} (${splitResult.totalUsdt.toFixed(4)} USDT total)`);
+    const refundDone = allRefunds.filter(r => betsDb[r.userAddress]?.find(b => b.id === r.betId)?.paidOut).length;
+    const winDone = allWins.filter(w => betsDb[w.userAddress]?.find(b => b.id === w.betId)?.paidOut).length;
+    logs.push(`Splits: refunds=${refundDone}/${allRefunds.length} wins=${winDone}/${allWins.length} (${splitResult.totalUsdt.toFixed(4)} USDT total)`);
 
     saveDb("bets_db.json", betsDb);
 
@@ -422,6 +528,8 @@ export async function GET(request: Request) {
       success: true,
       refunds: refundDone,
       wins: winDone,
+      insolventRefundCount: insolventRefunds.length,
+      insolventMatches,
       commissions: 0,
       totalUsdtPaid: Math.round(splitResult.totalUsdt * 1e6) / 1e6,
       failed: splitResult.failed,
